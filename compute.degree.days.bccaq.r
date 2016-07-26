@@ -51,7 +51,10 @@ create.base.files <- function(degree.name,gcm,scenario,type=NULL,
   files.all <- list.files(path=paste(data.dir,gcm,sep=''),pattern='tasmax_gcm_prism',full.name=TRUE)
   past.file <- files.all[grep(past.int,files.all)]
   proj.file <- files.all[grep(proj.int,files.all)]
-  run <- strsplit(past.file,'_')[[1]][11]  
+
+  file.split <- strsplit(past.file,'_')[[1]]
+  run <- file.split[grep('r*i1p1',file.split)]
+
   write.clim.name <- paste(degree.name,'_annual_',gcm,'_',scenario,'_',run,'_',new.int,'.nc',sep='')
   write.dir <- paste(write.dir,scenario,'/degree_days/',gcm,'/',sep='')
 
@@ -160,7 +163,9 @@ degree.days.for.model <- function(gcm,scenario,interval,type=NULL,
   tasmin.past.file <- tasmin.files[grep(past.int,tasmin.files)]
   tasmin.proj.file <- tasmin.files[grep(proj.int,tasmin.files)]
 
-  run <- strsplit(tasmin.past.file,'_')[[1]][11]
+  file.split <- strsplit(tasmin.past.file,'_')[[1]]
+  run <- file.split[grep('r*i1p1',file.split)]
+
   hist.dir <- paste(write.dir,scenario,'/degree_days/',gcm,'/',sep='')    
 
   degree.files <- list.files(path=hist.dir,pattern='dd',full.name=TRUE)
@@ -203,7 +208,6 @@ degree.days.for.model <- function(gcm,scenario,interval,type=NULL,
   tasmax.time.values <- c(tasmax.past.values,tasmax.proj.values) 
   tasmax.dates <- c(past.origin + tasmax.past.values*86400,
                     proj.origin + tasmax.proj.values*86400)
-
   
   tasmin.past.values <- ncvar_get(tasmin.past.nc,'time')
   tasmin.proj.values <- ncvar_get(tasmin.proj.nc,'time')
@@ -417,30 +421,50 @@ run.bccaq.raw <- function() {
 run.bccaq.prism <- function() {
 ##Running BC only versions
   
-  ##data.dir <-  '/storage/data/climate/downscale/CMIP5/BCCAQ/'
-
-  data.dir <- '/storage/data/scratch/ssobie/bccaq_gcm_van_whistler_subset/'
-  write.dir <- '/storage/data/scratch/ssobie/bccaq_gcm_van_whistler_subset/'
-  
   scenario <- 'rcp85'
   past.int <- '1951-2000'
   proj.int <- '2001-2100'
   new.int <- '1951-2100'
 
+  data.dir <- '/storage/data/scratch/ssobie/bccaq_gcm_van_whistler_subset/'
+  write.dir <- '/storage/data/scratch/ssobie/bccaq_gcm_van_whistler_subset/'
+
+   ##Move data to local storage for better I/O
+  tmp.dir <- '/local_temp/ssobie/van_whistler/'  
+  
   degree.names <- sort(degree.names)
-  gcm.list <- 'CanESM2'
+  gcm.list <- 'CSIRO-Mk3-6-0'
   for (gcm in gcm.list) {
     print(gcm)
 
-##    first <- lapply(degree.names,create.base.files,
-##                    gcm,scenario,type='bccaq',
-##                    past.int,proj.int,new.int,
-##                    data.dir,write.dir)
+    move.to <- paste("rsync -av --progress ",data.dir,gcm,"/*gcm_prism* ",tmp.dir,gcm,sep='')
+    print(move.to)
+    system(move.to)
 
+    print('Create new files')
+    first <- lapply(degree.names,create.base.files,
+                    gcm,scenario,type='bccaq',
+                    past.int,proj.int,new.int,
+                    tmp.dir,tmp.dir)
+
+    print('Calculate Degree Days')
     second <- degree.days.for.model(gcm,scenario,interval,type='bccaq',
                                     degree.names,
                                     past.int,proj.int,new.int,
-                                    data.dir,write.dir)
+                                    tmp.dir,tmp.dir)
+    move.back <- paste("rsync -av --progress ",tmp.dir,scenario,"/degree_days/",gcm," ",write.dir,scenario,"/degree_days",sep='')
+    print(move.back)
+    system(move.back)
+
+    clean.up <- paste("rm ",tmp.dir,gcm,"/*nc" ,sep='')
+    print(clean.up)      
+    system(clean.up)
+
+    clean.up.dd <- paste("rm ",tmp.dir,scenario,"/degree_days/",gcm,"/*nc" ,sep='')
+    print(clean.up.dd)      
+    system(clean.up.dd)
+    browser()
+
   }  
 }
 
