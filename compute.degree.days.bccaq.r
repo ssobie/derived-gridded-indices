@@ -433,11 +433,18 @@ run.bccaq.prism <- function() {
   tmp.dir <- '/local_temp/ssobie/van_whistler/'  
   
   degree.names <- sort(degree.names)
-  gcm.list <- 'CSIRO-Mk3-6-0'
+  gcm.list <- c('GFDL-ESM2G',
+                'HadGEM2-CC',
+                'HadGEM2-ES',
+                'inmcm4',
+                'MIROC5',
+                'MPI-ESM-LR',
+                'MRI-CGCM3')
+
   for (gcm in gcm.list) {
     print(gcm)
 
-    move.to <- paste("rsync -av --progress ",data.dir,gcm,"/*gcm_prism* ",tmp.dir,gcm,sep='')
+    move.to <- paste("rsync -av ",data.dir,gcm,"/*gcm_prism* ",tmp.dir,gcm,sep='')
     print(move.to)
     system(move.to)
 
@@ -452,7 +459,7 @@ run.bccaq.prism <- function() {
                                     degree.names,
                                     past.int,proj.int,new.int,
                                     tmp.dir,tmp.dir)
-    move.back <- paste("rsync -av --progress ",tmp.dir,scenario,"/degree_days/",gcm," ",write.dir,scenario,"/degree_days",sep='')
+    move.back <- paste("rsync -av ",tmp.dir,scenario,"/degree_days/",gcm," ",write.dir,scenario,"/degree_days",sep='')
     print(move.back)
     system(move.back)
 
@@ -463,8 +470,6 @@ run.bccaq.prism <- function() {
     clean.up.dd <- paste("rm ",tmp.dir,scenario,"/degree_days/",gcm,"/*nc" ,sep='')
     print(clean.up.dd)      
     system(clean.up.dd)
-    browser()
-
   }  
 }
 

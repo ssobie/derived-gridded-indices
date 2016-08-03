@@ -770,62 +770,80 @@ gcm.list <- c('ACCESS1-0',
 
 run.bccaq.prism.rp <- function() {
  
-  var.name <- 'pr'
+  var.name <- 'tasmin'
   scenario <- 'rcp85'
   past.int <- '1971-2000'
-  proj.int <- '2041-2070'
+  proj.int <- '2071-2100'
   rperiod <- '20'
-  gcm.list <- 'ACCESS1-0'
+
   data.dir <- paste('/storage/data/scratch/ssobie/bccaq_gcm_van_whistler_subset/',sep='') 
-  rp.dir <- paste('/storage/data/scratch/ssobie/bccaq_gcm_van_whistler_subset/',scenario,'/return_periods/',sep='')
-  
+  write.dir <- paste('/storage/data/scratch/ssobie/bccaq_gcm_van_whistler_subset/',scenario,'/return_periods/',sep='')
+  tmp.base <- '/local_temp/ssobie/van_whistler/'
+
+  tmp.rp <- paste(tmp.base,scenario,'/return_periods/',sep='')
   for (model in gcm.list) {
     print(model)
     gcm <- model[1]
     rcm <- NULL
-    write.dir <- paste(rp.dir,gcm,'/',sep='')
-    
-    if (!file.exists(write.dir))
-      dir.create(write.dir,recursive=TRUE)
-    
-    var.files <- list.files(path=paste(data.dir,gcm,'/',sep=''),pattern=paste(var.name,'_gcm_prism',sep=''),full.name=TRUE)
-    
-    ##-------------------------------------------------    
-    var.past.file <- var.files[grep('1951-2000',var.files)]
+    tmp.dir <- paste(tmp.base,gcm,sep='')
 
-    run <- strsplit(var.past.file,'_')[[1]][11]
+    move.to <- paste("rsync -av ",data.dir,gcm,"/",var.name,"_gcm_prism_BCCAQ_",gcm,"* ",tmp.dir,sep='')
+    print(move.to)
+    system(move.to)
+
+    write.rp <- paste(tmp.rp,gcm,'/',sep='')    
+    if (!file.exists(write.rp))
+      dir.create(write.rp,recursive=TRUE)
+    
+    var.files <- list.files(path=paste(tmp.dir,'/',sep=''),pattern=paste(var.name,'_gcm_prism',sep=''),full.name=TRUE)
+
+    ##-------------------------------------------------    
+    ##Past File                                                      
+    var.past.file <- var.files[grep('1951-2000',var.files)]
+    file.split <- strsplit(var.past.file,'_')[[1]]
+    run <- file.split[grep('r*i1p1',file.split)]
     write.hist.name <- paste(var.name,'_RPCI',rperiod,'_BCCAQ_PRISM_',gcm,'_',scenario,'_',run,'_',past.int,'.nc',sep='')
 
-    if (1==1) {
+    if (1==0) {
     make.new.netcdf.file(gcm,rcm,scenario,var.name,rperiod,
                          var.past.file,write.hist.name,
-                         data.dir,write.dir)
+                         tmp.dir,write.rp)
     print('made new file')
     test <- rp.for.model(gcm,rcm,scenario,var.name,rperiod,
                          var.past.file,write.hist.name,
-                         data.dir,write.dir,interval=past.int,canada=TRUE)
+                         tmp.dir,write.rp,interval=past.int,canada=TRUE)
     } 
     if (1==1) {
     ##-------------------------------------------------
+    ##Future File
     var.proj.file <- var.files[grep('2001-2100',var.files)]
     write.proj.name <- paste(var.name,'_RPCI',rperiod,'_BCCAQ_PRISM_',gcm,'_',scenario,'_',run,'_',proj.int,'.nc',sep='')
     make.new.netcdf.file(gcm,rcm,scenario,var.name,rperiod,
                          var.proj.file,write.proj.name,
-                         data.dir,write.dir)
+                         tmp.dir,write.rp)
     print('made new file')
     test <- rp.for.model(gcm,rcm,scenario,var.name,rperiod,
                          var.proj.file,write.proj.name,
-                         data.dir,write.dir,interval=proj.int,canada=TRUE)
+                         tmp.dir,write.rp,interval=proj.int,canada=TRUE)
   }
-  }
+
+  move.back <- paste("rsync -av ",tmp.rp,gcm," ",write.dir,sep='')
+  print(move.back)
+  system(move.back)
+
+  clean.up <- paste("rm ",tmp.dir,"/",var.name,"_gcm_prism_BCCAQ_",gcm,"* " ,sep='')
+  print(clean.up)
+  system(clean.up)
+
+  clean.up.dd <- paste("rm ",write.rp,var.name,"_RPCI*" ,sep='')
+  print(clean.up.dd)
+  system(clean.up.dd)
+
+
+  }##GCM loop
 }
 
 ##-------------------------------------------------------------------------
 
-##Rprof('rp.bccaq.gcms.profile.out')
-##run.bccaq.rcms.rp()
-##run.country.bccaq.gcms.rp()
-##run.bccaq.rcms.agg.scales.rp()
-##run.rcms.rp()
-##Rprof(NULL)
+
 run.bccaq.prism.rp()
