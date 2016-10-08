@@ -47,8 +47,9 @@ create.base.files <- function(degree.name,gcm,scenario,type=NULL,
                               data.dir,write.dir) {
 
   ##files <- list.files(path=data.dir,pattern=gcm,full.name=TRUE)
-  ##files.all <- list.files(path=paste(data.dir,scenario,'/',gcm,'/',sep=''),pattern='tasmax_day',full.name=TRUE)
-  files.all <- list.files(path=paste(data.dir,gcm,sep=''),pattern='tasmax_gcm_prism',full.name=TRUE)
+  scen.all <- list.files(path=paste(data.dir,gcm,sep=''),pattern='tasmax_day',full.name=TRUE)
+  ##files.all <- list.files(path=paste(data.dir,gcm,sep=''),pattern='tasmax_gcm_prism',full.name=TRUE)
+  files.all <- scen.all[grep(scenario,scen.all)]
   past.file <- files.all[grep(past.int,files.all)]
   proj.file <- files.all[grep(proj.int,files.all)]
 
@@ -154,12 +155,15 @@ degree.days.for.model <- function(gcm,scenario,interval,type=NULL,
                                   degree.names,
                                   past.int,proj.int,new.int,
                                   data.dir,write.dir) {
-
-  tasmax.files <- list.files(path=paste(data.dir,gcm,sep=''),pattern='tasmax_gcm_prism',full.name=TRUE)
+  tasmax.scen <- list.files(path=paste(data.dir,gcm,sep=''),pattern='tasmax_day',full.name=TRUE)   
+  tasmax.files <- tasmax.scen[grep(scenario,tasmax.scen)]
+  ##tasmax.files <- list.files(path=paste(data.dir,gcm,sep=''),pattern='tasmax_gcm_prism',full.name=TRUE)
   tasmax.past.file <- tasmax.files[grep(past.int,tasmax.files)]
   tasmax.proj.file <- tasmax.files[grep(proj.int,tasmax.files)]
-  
-  tasmin.files <- list.files(path=paste(data.dir,gcm,sep=''),pattern='tasmin_gcm_prism',full.name=TRUE)
+ 
+  tasmin.scen <- list.files(path=paste(data.dir,gcm,sep=''),pattern='tasmin_day',full.name=TRUE)
+  tasmin.files <- tasmin.scen[grep(scenario,tasmin.scen)]
+  ##tasmin.files <- list.files(path=paste(data.dir,gcm,sep=''),pattern='tasmin_gcm_prism',full.name=TRUE)
   tasmin.past.file <- tasmin.files[grep(past.int,tasmin.files)]
   tasmin.proj.file <- tasmin.files[grep(proj.int,tasmin.files)]
 
@@ -230,7 +234,7 @@ degree.days.for.model <- function(gcm,scenario,interval,type=NULL,
     tasmin.subset <- cbind(tasmin.past.subset,tasmin.proj.subset)
     
     temp.subset <- (tasmax.subset + tasmin.subset)/2 ##tasmin.subset ##
-
+    flag <- is.na(temp.subset[,1])
     temp.list <- list()
 
     for (j in 1:n.lat) {
@@ -261,6 +265,7 @@ degree.days.for.model <- function(gcm,scenario,interval,type=NULL,
                          }
       ncol <- length(degree.values[[1]])         
       degree.matrix <- matrix(unlist(degree.values),nrow=n.lat,ncol=ncol,byrow=TRUE)
+      degree.matrix[flag,] <- NA
   ##    print('Parallel version')
   ##    print(proc.time() - ptm)
 
@@ -283,7 +288,6 @@ if (1==0) {
 
       browser()
 }
-
 
       ncvar_put(clim.ncs[[k]],varid=degree.names[k],vals=degree.matrix,
                 start=c(i,1,1),count=c(1,-1,-1))
@@ -308,6 +312,18 @@ degree.names <- c('cdd',
 ##
 ## 
 ## 
+
+  gcm.list <- c('CanESM2',
+                'CCSM4',
+                'CNRM-CM5',
+                'CSIRO-Mk3-6-0',
+                'GFDL-ESM2G',
+                'HadGEM2-ES',
+                'MIROC5',
+                'MPI-ESM-LR',
+                'MRI-CGCM3')
+
+
   gcm.list <- c('ACCESS1-0',
                 'CanESM2',
                 'CCSM4',
@@ -320,6 +336,7 @@ degree.names <- c('cdd',
                 'MIROC5',
                 'MPI-ESM-LR',
                 'MRI-CGCM3')
+
 
 
 
@@ -421,30 +438,27 @@ run.bccaq.raw <- function() {
 run.bccaq.prism <- function() {
 ##Running BC only versions
   
-  scenario <- 'rcp85'
+  scenario <- 'rcp45'
   past.int <- '1951-2000'
   proj.int <- '2001-2100'
   new.int <- '1951-2100'
+  region <- 'bc'
 
-  data.dir <- '/storage/data/scratch/ssobie/bccaq_gcm_van_whistler_subset/'
-  write.dir <- '/storage/data/scratch/ssobie/bccaq_gcm_van_whistler_subset/'
+  data.dir <- paste('/storage/data/scratch/ssobie/bccaq_gcm_',region,'_subset/',sep='')
+  write.dir <- paste('/storage/data/scratch/ssobie/bccaq_gcm_',region,'_subset/',sep='')
 
    ##Move data to local storage for better I/O
-  tmp.dir <- '/local_temp/ssobie/van_whistler/'  
+  tmp.dir <- paste('/local_temp/ssobie/',region,'/',sep='')
+  if (!file.exists(tmp.dir))
+    dir.create(tmp.dir,recursive=TRUE)    
   
   degree.names <- sort(degree.names)
-  gcm.list <- c('GFDL-ESM2G',
-                'HadGEM2-CC',
-                'HadGEM2-ES',
-                'inmcm4',
-                'MIROC5',
-                'MPI-ESM-LR',
-                'MRI-CGCM3')
 
   for (gcm in gcm.list) {
     print(gcm)
 
-    move.to <- paste("rsync -av ",data.dir,gcm,"/*gcm_prism* ",tmp.dir,gcm,sep='')
+    ##move.to <- paste("rsync -av ",data.dir,gcm,"/*gcm_prism* ",tmp.dir,gcm,sep='')
+    move.to <- paste("rsync -av ",data.dir,gcm,"/*day* ",tmp.dir,gcm,sep='')
     print(move.to)
     system(move.to)
 

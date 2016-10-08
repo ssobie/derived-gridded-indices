@@ -263,6 +263,14 @@ rp.for.model <- function(gcm,rcm=NULL,scenario,var.name,rperiod,
 }
 
 ##**************************************************************************************
+
+
+
+
+###--------------------------------------------------------------------
+
+run.bccaq.gcms.rp <- function() {
+
 gcm.list <- c('CanESM2',
               'CCSM4',
               'CNRM-CM5',
@@ -272,7 +280,6 @@ gcm.list <- c('CanESM2',
               'MIROC5',
               'MPI-ESM-LR',
               'MRI-CGCM3')
-
 
 gcm.list <- c('ACCESS1-0',
               'CanESM2',
@@ -287,20 +294,15 @@ gcm.list <- c('ACCESS1-0',
               'MPI-ESM-LR',
               'MRI-CGCM3')
 
-gcm.list <- 'ACCESS1-0'
-
-###--------------------------------------------------------------------
-
-run.bccaq.gcms.rp <- function() {
  
-  var.name <- 'pr'
-  scenario <- 'rcp45'
+  var.name <- 'tasmin'
+  scenario <- 'rcp85'
   past.int <- '1971-2000'
-  proj.int <- '2041-2070'
+  proj.int <- '2071-2100'
   rperiod <- '20'
 
-  data.dir <- paste('/storage/data/scratch/ssobie/bccaq_gcm_bc_subset/',scenario,'/',sep='') 
-  rp.dir <- paste('/storage/data/scratch/ssobie/bccaq_gcm/',scenario,'/return_periods/',sep='')
+  data.dir <- paste('/storage/data/scratch/ssobie/bccaq_gcm_bc_subset/',sep='') 
+  rp.dir <- paste('/storage/data/scratch/ssobie/bccaq_gcm_bc_subset/',scenario,'/return_periods/',sep='')
   
   for (model in gcm.list) {
     print(model)
@@ -311,16 +313,17 @@ run.bccaq.gcms.rp <- function() {
     if (!file.exists(write.dir))
       dir.create(write.dir,recursive=TRUE)
     
-    var.files <- list.files(path=paste(data.dir,gcm,'/',sep=''),pattern=paste(var.name,'_day',sep=''),full.name=TRUE)
-    
+    var.files <- list.files(path=paste(data.dir,gcm,sep=''),pattern=paste(var.name,'_day',sep=''),full.name=TRUE)
+    scen.files <- var.files[grep(scenario,var.files)]    
     ##-------------------------------------------------    
-    var.past.file <- var.files[grep(past.int,var.files)]
-    browser()
-    run <- strsplit(var.past.file,'_')[[1]][9]
+    var.past.file <- scen.files[grep('1951-2000',scen.files)]
+
+    file.split <- strsplit(var.past.file,'_')[[1]]
+    run <- file.split[grep('r*i1p1',file.split)]
 
     write.hist.name <- paste(var.name,'_RPCI',rperiod,'_BCCAQ_GCM_',gcm,'_',scenario,'_',run,'_',past.int,'.nc',sep='')
 
-    if (1==1) {
+    if (1==0) {
     make.new.netcdf.file(gcm,rcm,scenario,var.name,rperiod,
                          var.past.file,write.hist.name,
                          data.dir,write.dir)
@@ -331,7 +334,7 @@ run.bccaq.gcms.rp <- function() {
     } 
     if (1==1) {
     ##-------------------------------------------------
-    var.proj.file <- var.files[grep(proj.int,var.files)]
+    var.proj.file <- var.files[grep('2001-2100',var.files)]
     write.proj.name <- paste(var.name,'_RPCI',rperiod,'_BCCAQ_GCM_',gcm,'_',scenario,'_',run,'_',proj.int,'.nc',sep='')
     make.new.netcdf.file(gcm,rcm,scenario,var.name,rperiod,
                          var.proj.file,write.proj.name,
@@ -379,10 +382,8 @@ run.country.bccaq.gcms.rp <- function() {
     var.file <- gcm.files[grep(scenario,gcm.files)]
 
     ##-------------------------------------------------    
-    if (country=='Canada')
-      run <- strsplit(var.file,'_')[[1]][5]
-    if (country=='America')
-      run <- strsplit(var.file,'_')[[1]][7]
+    file.split <- strsplit(var.file,'_')[[1]]
+    run <- file.split[grep('r*i1p1',file.split)]
 
     if (1==1) {
       print('historical')
@@ -426,7 +427,7 @@ run.bccaq.gcm.scale.rp <- function() {
   var.name <- 'pr'
   scenario <- 'rcp45'
   past.int <- '1971-2000'
-  proj.int <- '2041-2070'
+  proj.int <- '2071-2100'
   rperiod <- '20'
   
   for (model in gcm.list) {
@@ -447,13 +448,13 @@ run.bccaq.gcm.scale.rp <- function() {
     ##write.hist.name <- paste('pr_RP',rperiod,'_',gcm,'_',scenario,'_',run,'_gcm_scale_',past.int,'.nc',sep='')
     write.hist.name <- paste('pr_RPCI',rperiod,'_GCM_',gcm,'_',scenario,'_gcm_scale_',past.int,'.nc',sep='')
     
-    make.new.netcdf.file(gcm,rcm,scenario,var.name,rperiod,
-                         pr.past.file,write.hist.name,
-                         data.dir,write.dir)
-    print('made new file')
-    test <- rp.for.model(gcm,rcm,scenario,var.name,rperiod,
-                         pr.past.file,write.hist.name,
-                         data.dir,write.dir)
+    ##make.new.netcdf.file(gcm,rcm,scenario,var.name,rperiod,
+    ##                     pr.past.file,write.hist.name,
+    ##                     data.dir,write.dir)
+    ##print('made new file')
+    ##test <- rp.for.model(gcm,rcm,scenario,var.name,rperiod,
+    ##                     pr.past.file,write.hist.name,
+    ##                     data.dir,write.dir)
 
     ##-------------------------------------------------
     pr.proj.file <- pr.files[grep(proj.int,pr.files)]
@@ -755,30 +756,18 @@ run.anusplin.rp <- function() {
 
 ##-------------------------------------------------------------------------
 
-gcm.list <- c('ACCESS1-0',
-              'CanESM2',
-              'CCSM4',
-              'CNRM-CM5',
-              'CSIRO-Mk3-6-0',
-              'GFDL-ESM2G',
-              'HadGEM2-CC',
-              'HadGEM2-ES',
-              'inmcm4',
-              'MIROC5',
-              'MPI-ESM-LR',
-              'MRI-CGCM3')
-
 run.bccaq.prism.rp <- function() {
  
   var.name <- 'tasmin'
   scenario <- 'rcp85'
   past.int <- '1971-2000'
-  proj.int <- '2071-2100'
+  proj.int <- '2041-2070'
   rperiod <- '20'
+  region <- 'south_island'
 
-  data.dir <- paste('/storage/data/scratch/ssobie/bccaq_gcm_van_whistler_subset/',sep='') 
-  write.dir <- paste('/storage/data/scratch/ssobie/bccaq_gcm_van_whistler_subset/',scenario,'/return_periods/',sep='')
-  tmp.base <- '/local_temp/ssobie/van_whistler/'
+  data.dir <- paste('/storage/data/scratch/ssobie/bccaq_gcm_',region,'_subset/',sep='') 
+  write.dir <- paste('/storage/data/scratch/ssobie/bccaq_gcm_',region,'_subset/',scenario,'/return_periods/',sep='')
+  tmp.base <- paste('/local_temp/ssobie/',region,'/',sep='')
 
   tmp.rp <- paste(tmp.base,scenario,'/return_periods/',sep='')
   for (model in gcm.list) {
@@ -804,7 +793,7 @@ run.bccaq.prism.rp <- function() {
     run <- file.split[grep('r*i1p1',file.split)]
     write.hist.name <- paste(var.name,'_RPCI',rperiod,'_BCCAQ_PRISM_',gcm,'_',scenario,'_',run,'_',past.int,'.nc',sep='')
 
-    if (1==0) {
+    if (1==1) {
     make.new.netcdf.file(gcm,rcm,scenario,var.name,rperiod,
                          var.past.file,write.hist.name,
                          tmp.dir,write.rp)
@@ -846,4 +835,4 @@ run.bccaq.prism.rp <- function() {
 ##-------------------------------------------------------------------------
 
 
-run.bccaq.prism.rp()
+run.bccaq.gcms.rp() 
