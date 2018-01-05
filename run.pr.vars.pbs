@@ -1,0 +1,22 @@
+#!/bin/bash
+#PBS -l nodes=1:ppn=4
+#PBS -l pmem=10000mb
+#PBS -l walltime=36:00:00
+#PBS -d /storage/home/ssobie/code/repos/derived_gridded_indices/
+#PBS -o /storage/home/ssobie/code/repos/derived_gridded_indices/list.pr.stdout.log
+#PBS -e /storage/home/ssobie/code/repos/derived_gridded_indices/list.pr.stderr.log 
+#PBS -N pr_r3
+
+gcm='Allr3'
+run='r3i1p1'
+
+cd /storage/home/ssobie/code/repos/derived_gridded_indices/
+echo "Current working directory is `pwd`"
+
+module load R/3.2.5
+module load netcdf-bin
+module load cdo-bin
+module load nco-bin
+
+nohup R CMD BATCH "--args tmpdir='/local_temp/ssobie/pr/' gcm='$gcm' run='$run'" compute.precip.vars.r "./${gcm}.pr.vars.out"
+

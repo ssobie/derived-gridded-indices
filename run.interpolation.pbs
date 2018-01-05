@@ -1,0 +1,23 @@
+#!/bin/bash
+#PBS -l nodes=1:ppn=2
+#PBS -l pmem=10000mb
+#PBS -l walltime=36:00:00
+#PBS -d /storage/home/ssobie/code/repos/derived_gridded_indices/
+#PBS -o /storage/home/ssobie/code/repos/derived_gridded_indices/can.interp.pr.stdout.log
+#PBS -e /storage/home/ssobie/code/repos/derived_gridded_indices/can.interp.pr.stderr.log 
+#PBS -N prism_interp_can_pr
+
+gcm='CanESM2'
+scenario='rcp45'
+varname='pr'
+
+cd /storage/home/ssobie/code/repos/derived_gridded_indices/
+echo "Current working directory is `pwd`"
+
+module load R/3.2.5
+module load netcdf-bin
+module load cdo-bin
+module load nco-bin
+
+nohup R CMD BATCH "--args tmpdir='/local_temp/ssobie/prism/' gcm='$gcm' scenario='$scenario' varname='$varname'" interpolate.anomalies.r "./${gcm}.${scenario}.${varname}.interpolation.out"
+
