@@ -3,13 +3,13 @@
 #PBS -l pmem=10000mb
 #PBS -l walltime=36:00:00
 #PBS -d /storage/home/ssobie/code/repos/derived_gridded_indices/
-#PBS -o /storage/home/ssobie/code/repos/derived_gridded_indices/gcm.ratios.tasmin.stdout.log
-#PBS -e /storage/home/ssobie/code/repos/derived_gridded_indices/gcm.ratios.tasmin.stderr.log 
-#PBS -N prism_ratios_gcm_tn
+#PBS -o /storage/home/ssobie/code/repos/derived_gridded_indices/gcm.ratios.pr.stdout.log
+#PBS -e /storage/home/ssobie/code/repos/derived_gridded_indices/gcm.ratios.pr.stderr.log 
+#PBS -N ratios_pr41
 
-gcm='All'
+gcm='CCSM4'
 scenario='rcp85'
-varname='tasmin'
+varname='pr'
 
 cd /storage/home/ssobie/code/repos/derived_gridded_indices/
 echo "Current working directory is `pwd`"

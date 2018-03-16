@@ -1,0 +1,19 @@
+#!/bin/bash
+#PBS -l nodes=cheetah.compute.pcic.uvic.ca:ppn=1
+#PBS -l pmem=1000mb
+#PBS -l walltime=01:00:00
+#PBS -d /storage/home/ssobie/code/repos/derived_gridded_indices/
+#PBS -o /storage/home/ssobie/code/repos/derived_gridded_indices/list.stdout.log
+#PBS -e /storage/home/ssobie/code/repos/derived_gridded_indices/list.stderr.log 
+#PBS -N list
+
+cd /storage/home/ssobie/code/repos/derived_gridded_indices/
+echo "Current working directory is `pwd`"
+
+module load R/3.2.5
+module load netcdf-bin
+module load cdo-bin
+module load nco-bin
+
+nohup R CMD BATCH --no-save --no-restore "--args tmpdir='/local_temp/ssobie/prism/'" list.tmp.r "./list.out"
+
