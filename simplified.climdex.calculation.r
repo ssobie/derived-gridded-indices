@@ -164,6 +164,8 @@ if (cedar) {
 }
 
 data.dir <- paste0(base.dir,gcm,'/lat_split/')
+###data.dir <- paste0('/storage/data/climate/downscale/CMIP5_delivery/lat_split/')
+
 template.dir <- paste0(base.dir,gcm,'/template/',scenario,'/climdex/')
 template.file <- list.files(path=template.dir,pattern=paste0(varname,'ETCCDI'))
 

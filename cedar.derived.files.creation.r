@@ -25,10 +25,10 @@ time.component <- function(time.file,freq) {
   print(range(full.years))
   years.ix <- grep('*-01-01',full.series)
   years <- past.values[years.ix]
-  seas.ix <- sort(c(grep('*-01-01',full.series),
-		    grep('*-04-01',full.series),
-		    grep('*-08-01',full.series),
-		    grep('*-12-01',full.series)))
+  seas.ix <- sort(c(grep('*-01-15',full.series),
+		    grep('*-04-15',full.series),
+		    grep('*-07-15',full.series),
+		    grep('*-10-15',full.series)))
   seasons <- past.values[seas.ix]		    
   months.ix <- grep('[0-9]{4}-[0-9]{2}-01',full.series)
   months <- past.values[months.ix]
@@ -74,10 +74,52 @@ space.component <- function(space.file) {
   return(rv)   
 }
 
+global.component <- function() {
+  gcm.glob.atts <- ncatt_get(gcm.nc,0)
+
+  drive.centre <- gcm.glob.atts$institute_id
+  drive.centre.name <- gcm.glob.atts$institution
+
+  global.atts <- list(institution="Pacific Climate Impacts Consortium (PCIC), Victoria, BC, www.pacificclimate.org",
+                   contact="Pacific Climate Impacts Consortium",
+                   Conventions="CF-1.4",
+                   institute_id ="PCIC",
+                   domain='Canada',
+                   creation_date=format(Sys.time(),'%Y-%m-%dT%H:%M:%S%Z'),
+                   frequency="day",
+                   product="downscaled output",
+                   modeling_realm="atmos",
+                   project_id='CMIP5',
+                   table_id='Table day (10 Jun 2010)',
+                   references="Sobie, S.R. and T.Q. Murdock, 2017: High-Resolution Statistical Downscaling in Southwestern British Columbia. Journal of Applied Meteorology and Climatology, 56, 6, 1625–1641.",
+                   downscaling_method="Quantile Delta Mapping and Climate Imprint",
+                   downscaling_method_id='BCCAQv2+CI',
+                   downscaling_package_id='github.com/pacificclimate/ClimDown',
+                   driving_experiment=paste("historical,",rcp,sep=''),
+                   driving_experiment_id=paste("historical,",rcp,sep=''),
+                   driving_institution = drive.centre.name, ##Full name
+                   driving_institute_id = drive.centre, ##Acronym
+                   driving_model_id = gcm,
+                   driving_realization = substr(run,2,2), ##These integers are from the 'r1i1p1' code
+                   driving_initialization_method='1',
+                   driving_physics_version = '1',
+                   target_institution = "Oregon State University and Pacific Climate Impacts Consortium",
+                   target_institute_id = "OSU+PCIC",
+                   target_dataset = "PRISM British Columbia monthly climatology 30 arc second grids",
+                   target_dataset_id = "PRISM",
+                   target_references = "Daly, C., M. Halbleib, J.I. Smith, W.P. Gibson, M.K. Doggett, G.H. Taylor, J. Curtis and P.P. Pasteris, 2008: Physiographically sensitive mapping of climatological temperature and precipitation across the coterminous United States. International Journal of Climatology, 28, 15, 2031-2064, doi: 10.1002/joc.1688.",
+                   target_version = "obtained: 28 Nov 2017",
+                   target_contact = "Faron Anslow fanslow@uvic.ca",
+                   title = "PRISM Bias Corrected (BCCAQ2) downscaling model output for British Columbia")
+  return(global.atts)
+}
+
+
 get.climdex.info <- function(climdex.name) {
 
   climdex.names <- list(climdex.fd=c('fdETCCDI','Ann','days'),
                         climdex.su=c('suETCCDI','Ann','days'),
+                        climdex.su30=c('su30ETCCDI','Ann','days'),
                         climdex.id=c('idETCCDI','Ann','days'),
                         climdex.tr=c('trETCCDI','Ann','days'),
                         climdex.gsl=c('gslETCCDI','Ann','days'),
@@ -187,7 +229,7 @@ make.derived.files <- function(gcm,scenario,
                                tasmax.time.tmp,tasmin.time.tmp,pr.time.tmp,
                                tasmax.space.tmp,tasmin.space.tmp,pr.space.tmp,
                                data.dir,write.dir,tmp.dir) {
-
+if (1==1) {
   ##-----------------------------------------------------------------------
   ##Degree Days
   
@@ -239,7 +281,7 @@ make.derived.files <- function(gcm,scenario,
 		     'Annual Minimum Tasmin')
   freq <- 'Ann'                      
 
-  out.dir <- paste(tmp.dir,'/annual_maxima',sep='')
+  out.dir <- paste(tmp.dir,'/annual_extremes',sep='')
   if (!file.exists(out.dir)) {
     dir.create(out.dir,recursive=TRUE)
   }
@@ -264,9 +306,9 @@ make.derived.files <- function(gcm,scenario,
                        tasmax='degC',
                        tasmin='degC',
                        pr='mm day-1')
-    write.clim.name <- paste(var.name,'_Annual_Max_BCCAQ2_PRISM_',gcm,'_',scenario,'_',run,'_',time.info$interval,'.nc',sep='')
+    write.clim.name <- paste(var.name,'_annual_maximum_BCCAQ2_PRISM_',gcm,'_',scenario,'_',run,'_',time.info$interval,'.nc',sep='')
     if (var.name=='tasmin') {
-        write.clim.name <- paste(var.name,'_Annual_Min_BCCAQ2_PRISM_',gcm,'_',scenario,'_',run,'_',time.info$interval,'.nc',sep='')
+        write.clim.name <- paste(var.name,'_annual_Minimum_BCCAQ2_PRISM_',gcm,'_',scenario,'_',run,'_',time.info$interval,'.nc',sep='')
     }
 
     create.base.files(var.name,var.units,long.name,
@@ -279,73 +321,109 @@ make.derived.files <- function(gcm,scenario,
   print(move.back)
   system(move.back)
 
-  clean.up.dd <- paste("rm ",tmp.dir,"/annual_maxima/*nc" ,sep='')
+  clean.up.dd <- paste("rm ",tmp.dir,"/annual_extremes/*nc" ,sep='')
   print(clean.up.dd)      
   system(clean.up.dd)
 
-  clean.up.dd <- paste("rmdir ",tmp.dir,"/annual_maxima/" ,sep='')
+  clean.up.dd <- paste("rmdir ",tmp.dir,"/annual_extremes/" ,sep='')
   print(clean.up.dd)      
   system(clean.up.dd)
+}
 
   ##-----------------------------------------------------------------------
-  ##Climdex
-  print('Creating Climdex Files')
-  var.names <- c('climdex.fd','climdex.su','climdex.id',
-                 'climdex.tr','climdex.gsl','climdex.txx',
-                 'climdex.tnx','climdex.txn','climdex.tnn',
-                 'climdex.tn10p','climdex.tx10p','climdex.tn90p',
-                 'climdex.tx90p','climdex.wsdi','climdex.csdi',
-                 'climdex.dtr','climdex.rx1day','climdex.rx2day',
-                 'climdex.rx5day','climdex.sdii','climdex.r10mm',
-                 'climdex.r20mm','climdex.cdd','climdex.cwd',
-                 'climdex.r95ptot','climdex.r99ptot','climdex.prcptot',
-                 'climdex.r95days','climdex.r99days','climdex.r95store',
-                 'climdex.r99store')
+  ##Quantiles
+  ##Creating Annual Quantile values for the building code parameters
+  print('Creating Return Period Annual Maximum base files')
+  var.names <- c('pr','tasmax','tasmin')
+  var.long.names <- c('Annual Precipitation Quantile',
+  		     'Annual Tasmax Quantile',
+		     'Annual Tasmin Quantile')
+  freq <- 'Ann'                      
 
-  out.dir <- paste(tmp.dir,'/climdex',sep='')
+  out.dir <- paste(tmp.dir,'/annual_quantiles',sep='')
   if (!file.exists(out.dir)) {
     dir.create(out.dir,recursive=TRUE)
   }
 
   for (v in seq_along(var.names)) {
       var.name <- var.names[v]
-      climdex.info <- get.climdex.info(var.name)
-      climdex.var <- climdex.info[1]
-      climdex.calendar <- climdex.info[2]
-      climdex.units <- climdex.info[3]
+      long.name <- var.long.names[v]
+    print(var.name)
+    time.tmp <- switch(var.name,
+                       tasmax=tasmax.time.tmp,
+                       tasmin=tasmin.time.tmp,
+                       pr=pr.time.tmp)
+    print(time.tmp)		        
+    time.info <- time.component(time.tmp,freq)
+    space.tmp <- switch(var.name,
+                        tasmax=tasmax.space.tmp,
+                        tasmin=tasmin.space.tmp,
+                        pr=pr.space.tmp)
+    print(space.tmp)			 
+    space.info <- space.component(space.tmp)  
+    var.units <- switch(var.name,
+                       tasmax='degC',
+                       tasmin='degC',
+                       pr='mm day-1')
 
-      print(var.name)
-      time.tmp <- tasmax.time.tmp
-      print(time.tmp)		        
-      time.info <- time.component(time.tmp,freq=climdex.calendar)
-      space.tmp <- tasmax.space.tmp                 
-      print(space.tmp)			 
-      space.info <- space.component(space.tmp)  
-      var.units <- climdex.units
+   if (var.name=='tasmax') {
+      write.clim.name <- paste(var.name,'_annual_quantile_975_BCCAQ2_PRISM_',gcm,'_',scenario,'_',run,'_',time.info$interval,'.nc',sep='')
+      create.base.files(var.name,var.units,long.name,
+    		      gcm,scenario,    
+                      write.clim.name,
+                      time.info,space.info,		
+                      tmp.dir,out.dir)
+      write.clim.name <- paste(var.name,'_annual_quantile_990_BCCAQ2_PRISM_',gcm,'_',scenario,'_',run,'_',time.info$interval,'.nc',sep='')
+      create.base.files(var.name,var.units,long.name,
+    		      gcm,scenario,    
+                      write.clim.name,
+                      time.info,space.info,		
+                      tmp.dir,out.dir)
+      write.clim.name <- paste(var.name,'_annual_quantile_996_BCCAQ2_PRISM_',gcm,'_',scenario,'_',run,'_',time.info$interval,'.nc',sep='')
+      create.base.files(var.name,var.units,long.name,
+    		      gcm,scenario,    
+                      write.clim.name,
+                      time.info,space.info,		
+                      tmp.dir,out.dir)
 
-      write.clim.name <- paste(climdex.var,'_',tolower(climdex.calendar),'_BCCAQ2-PRISM_',gcm,'_',scenario,'_',run,'_',time.info$interval,'.nc',sep='')
-      create.base.files(climdex.var,var.units,toupper(climdex.var),
-                        gcm,scenario,    
-                        write.clim.name,
-                        time.info,space.info,		
-                        tmp.dir,out.dir)
+   }
+
+   if (var.name=='tasmin') {
+      write.clim.name <- paste(var.name,'_annual_quantile_004_BCCAQ2_PRISM_',gcm,'_',scenario,'_',run,'_',time.info$interval,'.nc',sep='')
+      create.base.files(var.name,var.units,long.name,
+    		      gcm,scenario,    
+                      write.clim.name,
+                      time.info,space.info,		
+                      tmp.dir,out.dir)
+      write.clim.name <- paste(var.name,'_annual_quantile_010_BCCAQ2_PRISM_',gcm,'_',scenario,'_',run,'_',time.info$interval,'.nc',sep='')
+      create.base.files(var.name,var.units,long.name,
+    		      gcm,scenario,    
+                      write.clim.name,
+                      time.info,space.info,		
+                      tmp.dir,out.dir)
+      write.clim.name <- paste(var.name,'_annual_quantile_025_BCCAQ2_PRISM_',gcm,'_',scenario,'_',run,'_',time.info$interval,'.nc',sep='')
+      create.base.files(var.name,var.units,long.name,
+    		      gcm,scenario,    
+                      write.clim.name,
+                      time.info,space.info,		
+                      tmp.dir,out.dir)
+    }
   }
   move.back <- paste("rsync -av ",out.dir," ",write.dir,sep='')
   print(move.back)
   system(move.back)
 
-  clean.up.dd <- paste("rm ",tmp.dir,"/climdex/*nc" ,sep='')
+  clean.up.dd <- paste("rm ",tmp.dir,"/annual_quantiles/*nc" ,sep='')
   print(clean.up.dd)      
   system(clean.up.dd)
 
-  clean.up.dd <- paste("rmdir ",tmp.dir,"/climdex/" ,sep='')
+  clean.up.dd <- paste("rmdir ",tmp.dir,"/annual_quantiles/" ,sep='')
   print(clean.up.dd)      
   system(clean.up.dd)
 
 
 
-
-
+if (1==1) {
   ##-----------------------------------------------------------------------
   ##Annual Averages/Sums
   
@@ -373,7 +451,12 @@ make.derived.files <- function(gcm,scenario,
                           tasmin='degC',
                           pr='mm day-1')
       
-      write.clim.name <- paste(var.name,'_annual_BCCAQ2_PRISM_',gcm,'_',scenario,'_',run,'_',time.info$interval,'.nc',sep='')    
+      var.type <- switch(var.name,
+                          tasmax='average',
+                          tasmin='average',
+                          pr='total')
+
+      write.clim.name <- paste(var.name,'_annual_',var.type,'_BCCAQ2_PRISM_',gcm,'_',scenario,'_',run,'_',time.info$interval,'.nc',sep='')    
       create.base.files(var.name,var.units,long.name,
                         gcm,scenario,    
                         write.clim.name,
@@ -487,6 +570,62 @@ make.derived.files <- function(gcm,scenario,
 
 
 
+  ##-----------------------------------------------------------------------
+  ##Climdex
+  print('Creating Climdex Files')
+  var.names <- c('climdex.fd','climdex.su','climdex.id',
+                 'climdex.tr','climdex.gsl','climdex.txx',
+                 'climdex.tnx','climdex.txn','climdex.tnn',
+                 'climdex.tn10p','climdex.tx10p','climdex.tn90p',
+                 'climdex.tx90p','climdex.wsdi','climdex.csdi',
+                 'climdex.dtr','climdex.rx1day','climdex.rx2day',
+                 'climdex.rx5day','climdex.sdii','climdex.r10mm',
+                 'climdex.r20mm','climdex.cdd','climdex.cwd',
+                 'climdex.r95ptot','climdex.r99ptot','climdex.prcptot',
+                 'climdex.r95days','climdex.r99days','climdex.r95store',
+                 'climdex.r99store')
+  var.names <- 'climdex.su30'
+  out.dir <- paste(tmp.dir,'/climdex',sep='')
+  if (!file.exists(out.dir)) {
+    dir.create(out.dir,recursive=TRUE)
+  }
+
+  for (v in seq_along(var.names)) {
+      var.name <- var.names[v]
+      climdex.info <- get.climdex.info(var.name)
+      climdex.var <- climdex.info[1]
+      climdex.calendar <- climdex.info[2]
+      climdex.units <- climdex.info[3]
+
+      print(var.name)
+      time.tmp <- tasmax.time.tmp
+      print(time.tmp)		        
+      time.info <- time.component(time.tmp,freq=climdex.calendar)
+      space.tmp <- tasmax.space.tmp                 
+      print(space.tmp)			 
+      space.info <- space.component(space.tmp)  
+      var.units <- climdex.units
+
+      write.clim.name <- paste(climdex.var,'_',tolower(climdex.calendar),'_BCCAQ2_PRISM_',gcm,'_',scenario,'_',run,'_',time.info$interval,'.nc',sep='')
+      create.base.files(climdex.var,var.units,toupper(climdex.var),
+                        gcm,scenario,    
+                        write.clim.name,
+                        time.info,space.info,		
+                        tmp.dir,out.dir)
+  }
+  move.back <- paste("rsync -av ",out.dir," ",write.dir,sep='')
+  print(move.back)
+  system(move.back)
+
+  clean.up.dd <- paste("rm ",tmp.dir,"/climdex/*nc" ,sep='')
+  print(clean.up.dd)      
+  system(clean.up.dd)
+
+  clean.up.dd <- paste("rmdir ",tmp.dir,"/climdex/" ,sep='')
+  print(clean.up.dd)      
+  system(clean.up.dd)
+
+}
 
 }
 
@@ -501,10 +640,10 @@ for(i in 1:length(args)){
 tmp.dir <- tmpdir
 
 ##tmp.dir <- '/tmpdir'
-gcm <- 'CanESM2'
-scenario <- 'rcp85'
-data.dir <- '/scratch/ssobie/prism/'
-write.dir <- paste0('/scratch/ssobie/prism/',gcm,'/',scenario)
+##gcm <- 'CanESM2'
+##scenario <- 'rcp85'
+data.dir <- '/storage/data/climate/downscale/BCCAQ2+PRISM/high_res_downscaling/bccaq_gcm_bc_subset/'
+write.dir <- paste0('/storage/data/climate/downscale/BCCAQ2+PRISM/high_res_downscaling/bccaq_gcm_bc_subset/',gcm,'/',scenario,'/')
 
 ##Move data to local storage for better I/O
 if (!file.exists(tmp.dir))

@@ -8,7 +8,6 @@ library(PCICt)
 ## 
 ## 
 ##
-
 gcm.list <- c('ACCESS1-0',
               'CanESM2',
               'CCSM4',
@@ -22,17 +21,8 @@ gcm.list <- c('ACCESS1-0',
               'MPI-ESM-LR',
               'MRI-CGCM3')
 
-gcm.list <- c('CanESM2',
-              'CCSM4',
-              'CNRM-CM5',
-              'CSIRO-Mk3-6-0',
-              'GFDL-ESM2G',
-              'HadGEM2-ES',
-              'MIROC5',
-              'MPI-ESM-LR',
-              'MRI-CGCM3')
 
-avg.sub.time <- function(day.file,mon.file,var.name,interval,read.dir,write.dir) {
+avg.sub.time <- function(day.file,seas.file,var.name,interval,read.dir,write.dir) {
 
   nc <- nc_open(paste(read.dir,day.file,sep=''))
   time.atts <- ncatt_get(nc,'time')
@@ -49,20 +39,28 @@ avg.sub.time <- function(day.file,mon.file,var.name,interval,read.dir,write.dir)
   en <- tail(grep(yrs[2],years),1)-1
   sub.file <- 'sub.nc'
   system(paste('ncks --overwrite -d time,',st,',',en,' ',read.dir,day.file,' ',write.dir,sub.file,sep=''))
-  print(mon.file)   
+  print(seas.file)   
   ##For precip
   if (var.name=='pr') {
-    system(paste('cdo -s -O monsum ',write.dir,sub.file,' ',write.dir,'tmp.nc',sep=''))
-    system(paste('cdo -s -O ymonmean ',write.dir,'tmp.nc ',write.dir,mon.file,sep=''))
+    ##Seasonal/Monthly
+    system(paste('cdo -s -O seassum ',write.dir,sub.file,' ',write.dir,'tmp.nc',sep=''))
+    system(paste('cdo -s -O yseasmean ',write.dir,'tmp.nc ',write.dir,seas.file,sep=''))
+    ##Annual
+    ##system(paste('cdo -s -O yearsum ',write.dir,sub.file,' ',write.dir,seas.file,sep=''))
     ##system(paste('cdo -s -O yearsum ',write.dir,sub.file,' ',write.dir,'tmp.nc',sep=''))
-    ##system(paste('cdo -s -O timmean ',write.dir,'tmp.nc ',write.dir,mon.file,sep=''))
+    ##system(paste('cdo -s -O timmean ',write.dir,'tmp.nc ',write.dir,seas.file,sep=''))
 
     system(paste('rm ',write.dir,'tmp.nc',sep=''))
     system(paste('rm ',write.dir,'sub.nc',sep=''))
   } else {
     ##For temperature  
-    system(paste('cdo -s -O ymonmean ',write.dir,sub.file,' ',write.dir,mon.file,sep=''))
-    ##system(paste('cdo -s -O yearmean ',write.dir,sub.file,' ',write.dir,mon.file,sep=''))
+    ##Seasonal/Monthly
+    system(paste('cdo -s -O yseasmean ',write.dir,sub.file,' ',write.dir,seas.file,sep=''))
+    ##Annual
+    ##system(paste('cdo -s -O yearmean ',write.dir,sub.file,' ',write.dir,seas.file,sep=''))
+    ##system(paste('cdo -s -O yearmean ',write.dir,sub.file,' ',write.dir,'tmp.nc',sep=''))
+    ##system(paste('cdo -s -O timmean ',write.dir,'tmp.nc ',write.dir,seas.file,sep=''))
+    ##system(paste('rm ',write.dir,'tmp.nc',sep=''))
     system(paste('rm ',write.dir,'sub.nc',sep=''))
   }  
   nc_close(nc)
@@ -70,50 +68,55 @@ avg.sub.time <- function(day.file,mon.file,var.name,interval,read.dir,write.dir)
 
 run.metro.van.seasons <- function() {
   ds.type <- 'bccaq'
-  var.list <- c('pr','tasmax','tasmin') ##'s30' ##
+  var.list <- c('tasmax','tasmin') ##c('pr','tasmax','tasmin') ##'s30' ##
   past.int <- '1971-2000'
 ##  proj.int <- '2011-2040'
-  scenario <- 'rcp26'
+  scenario <- 'rcp85'
   
-  proj.dir <-  '/storage/data/scratch/ssobie/bccaq_gcm_bc_subset/'
-  ##proj.dir <- '/storage/data/climate/downscale/BCCAQ2/CMIP5/GFDL-ESM2G/'
-  ##proj.dir <- '/storage/data/climate/downscale/BCCAQ2/CMIP5/GFDL-ESM2G/'
+  proj.dir <-  '/storage/data/climate/downscale/BCCAQ2+PRISM/high_res_downscaling/bccaq_gcm_south_island_subset/'
 
   for (gcm in gcm.list) {
     print(gcm)
     read.dir <- paste(proj.dir,gcm,'/',sep='')
-    write.dir  <- paste(proj.dir,scenario,'/monthly/',gcm,'/',sep='')
+    write.dir  <- paste(proj.dir,scenario,'/seasonal/',gcm,'/',sep='')
     
     if (!file.exists(write.dir))
       dir.create(write.dir)
     for (var.name in var.list) {
       print(var.name)
-      all.files <- list.files(path=read.dir,pattern=paste(var.name,'_day',sep=''))
+      ##all.files <- list.files(path=read.dir,pattern=paste(var.name,'_day',sep=''))
+      all.files <- list.files(path=read.dir,pattern=paste(var.name,'_gcm_prism',sep=''))
       scenario.files <- all.files[grep(scenario,all.files)]
       past.file <- scenario.files[grep('1951-2000',scenario.files)]
       proj.file <- scenario.files[grep('2001-2100',scenario.files)]
       ##past.file <- proj.file <- scenario.files
 
-      pattern <- paste(var.name,'_day',sep='')
-      replacement <- paste(var.name,'_mon',sep='')  
+      ##pattern <- paste(var.name,'_day',sep='')
+      pattern <- paste(var.name,'_gcm',sep='')
+      replacement <- paste(var.name,'_seas',sep='')  
       var.past <- gsub(pattern=pattern,replacement=replacement,past.file)
       var.proj <- gsub(pattern=pattern,replacement=replacement,proj.file)
 
       ##write.past <- gsub(pattern='19500101-21001231',replacement=past.int,var.past)
       ##write.proj <- gsub(pattern='19500101-21001231',replacement=proj.int,var.proj)
      
-      write.past <- gsub(pattern='1951-2000',replacement=past.int,var.past)
-      avg.sub.time(past.file,write.past,var.name,interval=past.int,read.dir,write.dir)
+##      write.past <- gsub(pattern='1951-2000',replacement=past.int,var.past)
+##      avg.sub.time(past.file,write.past,var.name,interval=past.int,read.dir,write.dir)
+
+##      write.proj <- gsub(pattern='2001-2100',replacement='2001-2100',var.proj)
+##      avg.sub.time(proj.file,write.proj,var.name,interval='2001-2100',read.dir,write.dir)
 
       write.proj <- gsub(pattern='2001-2100',replacement='2011-2040',var.proj)
       avg.sub.time(proj.file,write.proj,var.name,interval='2011-2040',read.dir,write.dir)
 
-      write.proj <- gsub(pattern='2001-2100',replacement='2041-2070',var.proj)
-      avg.sub.time(proj.file,write.proj,var.name,interval='2041-2070',read.dir,write.dir)
+##      write.proj <- gsub(pattern='2001-2100',replacement='2041-2070',var.proj)
+##      avg.sub.time(proj.file,write.proj,var.name,interval='2041-2070',read.dir,write.dir)
 
       write.proj <- gsub(pattern='2001-2100',replacement='2071-2100',var.proj)
       avg.sub.time(proj.file,write.proj,var.name,interval='2071-2100',read.dir,write.dir)
+
     } 
+
   }
 }
 

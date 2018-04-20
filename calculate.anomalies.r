@@ -36,11 +36,10 @@ create.anoms <- function(var.name,file,var.mon) {
   monthly.fac <- as.factor(format(var.dates,'%m'))
 
   data.atts <- ncatt_get(nc,var.name)
-
   for (ltx in l.seq) { ##145/5=29
     print(paste0('Subset: ',ltx,' in 145'))
     var.data <- ncvar_get(nc,var.name,start=c(1,ltx,1),count=c(-1,5,-1))
-    var.data[var.data<0] <- 0    	     
+    
     lt.ix <- ltx:(ltx+4)
     ##Load full time series and take anomalies from this
     var.anoms <- var.data*0
@@ -55,9 +54,12 @@ create.anoms <- function(var.name,file,var.mon) {
           var.anoms[,,ix] <- var.data[,,ix]/var.mean
         if (grepl('tas',var.name))
           var.anoms[,,ix] <- var.data[,,ix] - var.mean
+
       }
     }
+
     ##Fix the edges for interpolations
+    if (1==1) {
     ncol <- dim(var.data)[2]
     for (l in 1:3) { ##Repeat 3 times to add buffer
       for (j in 1:(ncol-1)) {
@@ -79,7 +81,7 @@ create.anoms <- function(var.name,file,var.mon) {
         var.anoms[k,kx,] <- var.anoms[(k-1),kx,]    
       }
     }
-
+    }
     ##if (var.name=='pr')
     ##  var.anoms[is.na(var.anoms)] <- 0
     ##data.adjust <- (var.anoms - data.atts$add_offset)/data.atts$scale_factor
@@ -97,7 +99,7 @@ bccaq.anomalies <- function(var.name,gcm,scenario,base.dir,tmp.dir) {
   print(paste('BCCAQ Anomalies: ',gcm,', ',var.name,sep=''))
 
   base.files <- list.files(path=paste(base.dir,'baseline/',gcm,sep=''),pattern=paste(var.name,'_day_',sep=''))
-  base.file <- base.files[grep('rcp45',base.files)]
+  base.file <- base.files[grep('rcp85',base.files)] 
 
   move.to <- paste("rsync -av ",base.dir,"baseline/",gcm,"/",base.file," ",tmp.dir,sep='')
   print(move.to)
@@ -170,11 +172,11 @@ run.adjust <- function() {
       eval(parse(text=args[[i]]))
   }
 
-##gcm <- 'ACCESS1-0'
-##scenario <- 'rcp45'
-##varname <- 'pr'
+##gcm <- 'inmcm4'
+##scenario <- 'rcp85'
+##varname <- 'tasmin'
 
-  tmp.dir <- '/local_temp/ssobie/anomalies/'
+  tmp.dir <- paste0('/local_temp/ssobie/anomalies/',gcm,'/',varname,'/')
   if (!file.exists(tmp.dir)) {
      dir.create(tmp.dir,recursive=T)
   }

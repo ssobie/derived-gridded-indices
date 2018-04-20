@@ -5,7 +5,7 @@ library(PCICt)
 
 make.tas.files <- function() {
 
-scenarios <- c('piControl')
+scenarios <- c('rcp26','rcp45','rcp85')
 ##'ACCESS1-0',
 ##'CanESM2',
 
@@ -17,21 +17,23 @@ gcm.list <- c('ACCESS1-0','ACCESS1-3','BNU-ESM','CanESM2','CESM1-CAM5','CSIRO-Mk
               'MPI-ESM-LR','MPI-ESM-MR','NorESM1-M','bcc-csm1-1','bcc-csm1-1-m','CCSM4','CNRM-CM5','GFDL-CM3','inmcm4',
               'HadGEM2-CC','HadGEM2-ES','IPSL-CM5A-LR','MIROC5','MIROC-ESM','MIROC-ESM-CHEM','MRI-CGCM3')
 
-gcm.list <- 'NorESM1-M'          
+gcm.list <- 'NorESM1-ME'          
 
-proj.dir <- '/storage/data/climate/downscale/BCCAQ2/CMIP5/global/control/'
+proj.dir <- '/storage/data/climate/downscale/BCCAQ2+PRISM/CMIP5/global/'
 for (gcm in gcm.list) {  
   for (scenario in scenarios) {
     print(gcm)
     read.dir <- paste0(proj.dir,gcm,'/')
     write.dir  <- read.dir
     
-    tx.files <- list.files(path=read.dir,pattern='tasmax_day')
+    all.files <- list.files(path=read.dir,pattern='tasmax_day')
+    tx.files <- all.files[grep('1850',all.files)]
     tx.file <- tx.files[grep(scenario,tx.files)]
 
-    tn.files <- list.files(path=read.dir,pattern='tasmin_day')
+    all.files <- list.files(path=read.dir,pattern='tasmin_day')
+    tn.files <- all.files[grep('1850',all.files)]
     tn.file <- tn.files[grep(scenario,tn.files)]
-    
+
     tas.file <- gsub(pattern='tasmax',replacement='tas',tx.file)
     ##print(paste('cdo -s -O add ',read.dir,tx.file,' ',read.dir,tn.file,' ',write.dir,'tmp2.nc',sep=''))
     ##print(paste('cdo -s -O divc,2 ',write.dir,'tmp2.nc ',write.dir,tas.file,sep=''))
@@ -48,13 +50,13 @@ for (gcm in gcm.list) {
 
 make.annual.avg.files <- function() {
 
-scenario <- 'historical\\+rcp85'
-gcm.list <- c('ACCESS1-0','ACCESS1-3','BNU-ESM','CanESM2','CSIRO-Mk3-6-0','GFDL-ESM2M','IPSL-CM5A-MR','IPSL-CM5B-LR',
+scenario <- '\\+rcp26'
+gcm.list <- c('ACCESS1-0','ACCESS1-3','CanESM2','CSIRO-Mk3-6-0','GFDL-CM3','GFDL-ESM2G','GFDL-ESM2M','IPSL-CM5A-MR','IPSL-CM5B-LR',
               'MPI-ESM-LR','MPI-ESM-MR','NorESM1-M','bcc-csm1-1','bcc-csm1-1-m','CNRM-CM5','inmcm4',
-              'HadGEM2-CC','HadGEM2-ES','IPSL-CM5A-LR','MIROC5','MIROC-ESM','MIROC-ESM-CHEM','MRI-CGCM3')
-
-##  proj.dir <- '/storage/data/climate/downscale/BCCAQ2/CMIP5/global/control/'
-proj.dir <- '/storage/data/projects/CanSISE/n2w/CMIP5/'
+              'HadGEM2-AO','HadGEM2-CC','HadGEM2-ES','IPSL-CM5A-LR','MIROC5','MIROC-ESM','MIROC-ESM-CHEM','MRI-CGCM3')
+gcm.list <- 'NorESM1-ME'
+  proj.dir <- '/storage/data/climate/downscale/BCCAQ2+PRISM/CMIP5/global/'
+##proj.dir <- '/storage/data/projects/CanSISE/n2w/CMIP5/'
   
   for (gcm in gcm.list) {
     print(gcm)
@@ -63,11 +65,11 @@ proj.dir <- '/storage/data/projects/CanSISE/n2w/CMIP5/'
     if (!file.exists(write.dir)) {
        dir.create(write.dir,recursive=TRUE)
     }
-    ##tas.files <- list.files(path=read.dir,pattern='tas_day')
-    tas.files <- list.files(path=read.dir,pattern='snc_LImon')
+    tas.files <- list.files(path=read.dir,pattern='tas_day')
+    ##tas.files <- list.files(path=read.dir,pattern='snc_LImon')
     tas.file <- tas.files[grep(scenario,tas.files)]
-    write.file <- gsub('_LImon_','_ann_',tas.file)
-    
+    write.file <- gsub('_day_','_ann_',tas.file)
+
     system(paste('cdo -s -O yearmean ',read.dir,tas.file,' ',write.dir,write.file,sep=''))
 
   }

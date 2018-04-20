@@ -50,12 +50,32 @@ calc.rp.ratios <- function(past.data,proj.data,
     past.ts.fit <- fevd(past.to.fit,type='GEV')
     proj.ts.fit <- fevd(proj.to.fit,type='GEV')
 
+    past.ts.old <- gev.fit(past.to.fit,show=FALSE)
+    proj.ts.old <- gev.fit(proj.to.fit,show=FALSE)
+
+    past.ts.fit$results$par <- past.ts.old$mle
+    names(past.ts.fit$results$par) <- c('location','scale','shape')
+
+    proj.ts.fit$results$par <- proj.ts.old$mle
+    names(proj.ts.fit$results$par) <- c('location','scale','shape')
+
     ##past.rps <- return.level(past.ts.fit,return.period=as.numeric(rperiod),make.plot=F)
     past.rps <- return.level(past.ts.fit,return.period=as.numeric(rperiod),make.plot=F)
 
     new.rp <- 1/(1-pextRemes(proj.ts.fit,as.numeric(past.rps)))
-    rp.ratio <- round(as.numeric(rperiod)/new.rp,1)
-    return(rp.ratio)
+    ##rp.ratio <- round(as.numeric(rperiod)/new.rp,1)
+
+    ##if (rp.ratio > 10) {
+    ##   browser()
+    ##}
+    if (sum(new.rp > 100) > 0) {
+       browser()
+    }
+    new.rp[new.rp>100] <- 100
+    new.rp[is.infinite(new.rp)] <- NA
+    new.rp[new.rp<0.2] <- 0.2
+    ##return(rp.ratio)
+    return(new.rp)
   }
 }
 
@@ -67,7 +87,7 @@ make.new.netcdf.file <- function(gcm,rcm=NULL,scenario,var.name,rperiod,
   rp.name <- paste('rp.',rperiod,sep='')
 
   ##--------------------------------------------------------------
-  nc <- nc_open(past.file,write=FALSE)
+  nc <- nc_open(paste0(data.dir,'/',past.file),write=FALSE)
   
   time.atts <- ncatt_get(nc,'time')
   time.calendar <- time.atts$calendar
@@ -153,6 +173,9 @@ date.bounds <- function(var.dates,interval) {
   bnds <- strsplit(interval,'-')[[1]]
   yst <- head(grep(bnds[1],var.dates),1)
   yen <- tail(grep(bnds[2],var.dates),1)
+  if (length(yen)==0) {
+     yen <- length(var.dates)
+  }
   return(c(yst,yen))
 }
 
@@ -167,8 +190,8 @@ rp.for.model <- function(gcm,rcm=NULL,scenario,var.name,rperiod,
   rp.name <- paste('rp.',rperiod,sep='')  
 
   nc <- nc_open(paste(write.dir,write.file,sep=''),write=TRUE)
-  hist.nc <- nc_open(past.file,write=FALSE)
-  proj.nc <- nc_open(proj.file,write=FALSE)
+  hist.nc <- nc_open(paste0(data.dir,'/',past.file),write=FALSE)
+  proj.nc <- nc_open(paste0(data.dir,'/',proj.file),write=FALSE)
   var.units <- ncatt_get(hist.nc,var.name,'units')$value
   print(var.units)    
   lon <- ncvar_get(nc,'lon')
@@ -192,7 +215,7 @@ rp.for.model <- function(gcm,rcm=NULL,scenario,var.name,rperiod,
   proj.yearly.fac <- as.factor(format(proj.dates,'%Y'))[fst:fen]
 
   print(n.lon)
-  for (i in 1:n.lon) {
+  for (i in 247:n.lon) {
 #    print(paste('i = ',i,sep=''))
       print(paste(gcm,'-',rcm,' i= ',i,sep=''))
       past.subset <- ncvar_get(hist.nc,var.name,start=c(i,1,pst),count=c(1,-1,(pen-pst+1)))
@@ -205,9 +228,10 @@ rp.for.model <- function(gcm,rcm=NULL,scenario,var.name,rperiod,
         proj.list[[j]] <- proj.subset[j,]
       }
 
-      rp.values <- mapply(FUN=calc.rp.ratios,past.list,proj.list,MoreArgs=list(past.yearly.fac,proj.yearly.fac,var.name=var.name,rperiod))      
-      ncvar_put(nc,varid=rp.name,vals=rp.values,
-                   start=c(i,1,1),count=c(1,n.lat,1))            
+      rp.values <- mapply(FUN=calc.rp.ratios,past.list,proj.list,MoreArgs=list(past.yearly.fac,proj.yearly.fac,var.name=var.name,rperiod))  
+
+##      ncvar_put(nc,varid=rp.name,vals=rp.values,
+##                   start=c(i,1,1),count=c(1,n.lat,1))            
   }
   
   nc_close(hist.nc)
@@ -218,18 +242,6 @@ rp.for.model <- function(gcm,rcm=NULL,scenario,var.name,rperiod,
 
 ##
 
-gcm.list <- c('ACCESS1-0',
-              'CanESM2',
-              'CCSM4',
-              'CNRM-CM5',
-              'CSIRO-Mk3-6-0',
-              'GFDL-ESM2G',
-              'HadGEM2-CC',
-              'HadGEM2-ES',
-              'inmcm4',
-              'MIROC5',
-              'MPI-ESM-LR',
-              'MRI-CGCM3')
 rcp26.list <- c('CanESM2',
               'CCSM4',
               'CNRM-CM5',
@@ -239,7 +251,32 @@ rcp26.list <- c('CanESM2',
               'MIROC5',
               'MPI-ESM-LR',
               'MRI-CGCM3')
-gcm.list <- c('ACCESS1-0')
+gcm.list <- c('CNRM-CM5',
+              'CSIRO-Mk3-6-0',
+              'GFDL-ESM2G',
+              'HadGEM2-CC',
+              'HadGEM2-ES',
+              'inmcm4',
+              'MIROC5',
+              'MPI-ESM-LR',
+              'MRI-CGCM3')
+##
+
+gcm.list <- c('ACCESS1-0',
+              'CanESM2',
+              'CCSM4',
+              'CNRM-CM5',
+              'CSIRO-Mk3-6-0',
+              'GFDL-ESM2G')
+##              'HadGEM2-CC',
+##              'HadGEM2-ES',
+##              'inmcm4',
+##              'MIROC5',
+##              'MPI-ESM-LR',
+##              'MRI-CGCM3')
+
+gcm.list <- 'CCSM4'
+
 ###--------------------------------------------------------------------
 
 run.bccaq.gcms.rp <- function() {
@@ -248,39 +285,66 @@ run.bccaq.gcms.rp <- function() {
   scenario <- 'rcp85'
   past.int <- '1971-2000'
   proj.int <- '2041-2070'
-  rperiod <- '1'
+  rperiod <- '20'
+  region <- 'van_whistler'
 
-  data.dir <- paste('/storage/data/projects/rci/data/stat.downscaling/BCCAQ/bccaq_gcm_bc_subset/',scenario,'/',sep='') 
-  rp.dir <- paste('/storage/data/projects/rci/data/stat.downscaling/BCCAQ/bccaq_gcm/',scenario,'/return_periods/',sep='')
+  data.dir <- paste('/storage/data/climate/downscale/BCCAQ2+PRISM/high_res_downscaling/bccaq_gcm_',region,'_subset/',sep='') 
+  rp.dir <- paste('/storage/data/climate/downscale/BCCAQ2+PRISM/high_res_downscaling/bccaq_gcm_',region,'_subset/',scenario,'/return_periods/',sep='') 
 
+
+  tmp.base <- paste('/local_temp/ssobie/',region,'/',var.name,'/',sep='')
+  tmp.rp <- paste(tmp.base,scenario,'/return_periods/',sep='')
+  
   for (model in gcm.list) {
     print(model)
     gcm <- model[1]
     rcm <- NULL
-    write.dir <- paste(rp.dir,gcm,'/',sep='')
-    
-    if (!file.exists(write.dir))
-      dir.create(write.dir,recursive=TRUE)
-    
-    var.files <- list.files(path=paste(data.dir,gcm,'/',sep=''),pattern=paste(var.name,'_day',sep=''),full.name=TRUE)
+    write.dir <- paste0(rp.dir,gcm)
+
+    tmp.dir <- paste(tmp.base,gcm,sep='')
+    if (!file.exists(tmp.dir))
+       dir.create(tmp.dir,recursive=TRUE)
+
+    write.rp <- paste(tmp.rp,gcm,'/',sep='')
+    if (!file.exists(write.rp))
+      dir.create(write.rp,recursive=TRUE)
+
+    var.files <- list.files(path=paste(data.dir,gcm,'/',sep=''),pattern=paste(var.name,'_gcm',sep=''))
 
     ##-------------------------------------------------    
     var.past.file <- var.files[grep('1951-2000',var.files)] ##var.files[grep(past.int,var.files)]
     var.proj.file <- var.files[grep('2001-2100',var.files)] ##var.files[grep(proj.int,var.files)]
 
-    run <- strsplit(var.past.file,'_')[[1]][9]
+    file.split <- strsplit(var.past.file,'_')[[1]]
+    run <- file.split[grep('r*i1p1',file.split)]
 
-    write.name <- paste(var.name,'_RP',rperiod,'_RATIOS_BCCAQ_GCM_',gcm,'_',scenario,'_',run,'_',proj.int,'.nc',sep='')
+    write.name <- paste(var.name,'_RP',rperiod,'_NEW_INTERVAL_BCCAQ_PRISM_',gcm,'_',scenario,'_',run,'_',proj.int,'.nc',sep='')
 
-##    make.new.netcdf.file(gcm,rcm,scenario,var.name,rperiod,
-##                         var.past.file,write.name,
-##                         data.dir,write.dir)
+    move.to <- paste("rsync -av ",data.dir,gcm,"/",var.past.file," ",tmp.dir,sep='')
+    system(move.to)
+    move.to <- paste("rsync -av ",data.dir,gcm,"/",var.proj.file," ",tmp.dir,sep='')
+    system(move.to)
+
+
+    make.new.netcdf.file(gcm,rcm,scenario,var.name,rperiod,
+                         var.past.file,write.name,
+                         tmp.dir,write.rp) ##data.dir,write.dir)
 
     print('made new file')
     test <- rp.for.model(gcm,rcm,scenario,var.name,rperiod,
                          var.past.file,var.proj.file,write.name,
                          past.int,proj.int,
-                         data.dir,write.dir)
+                         tmp.dir,write.rp)
+
+    move.back <- paste("rsync -av ",write.rp," ",write.dir,sep='')
+    print(move.back)
+    system(move.back)
+
+    clean.up <- paste("rm ",tmp.dir,"/",var.past.file,sep='')
+    system(clean.up)
+    clean.up <- paste("rm ",tmp.dir,"/",var.proj.file,sep='')
+    system(clean.up)
+
   }
 }
 

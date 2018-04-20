@@ -16,23 +16,30 @@ get.date.bounds <- function(nc) {
   return(rv)
 }
 
-interp.bccaq <- function(var.name,gcm,scenario,interval,grid.file,years,base.dir,tmp.dir) {
+interp.bccaq <- function(var.name,gcm,scenario,interval,grid.file,years,base.dir,write.dir,tmp.dir) {
 
   print(paste('Interpolate Anomalies: ',gcm,', ',var.name,', ',interval,sep=''))
   gcm.dir <- paste(base.dir,gcm,sep='')  
+
   anoms.files <- list.files(path=gcm.dir,pattern=paste(var.name,'_anoms_BCCAQ2_',sep=''))
   scen.files <- anoms.files[grep(interval,anoms.files)]
   anoms.file <- scen.files[grep(scenario,scen.files)]
   print(anoms.file)
 
-  move.to <- paste0('rsync -av ',gcm.dir,'/',anoms.file,' ',tmp.dir)
-  print(move.to)
-  system(move.to)
+  ##move.to <- paste0('rsync -av ',gcm.dir,'/',anoms.file,' ',tmp.dir)
+  ##print(move.to)
+  ##system(move.to)
 
-  base.file <- paste0(tmp.dir,'/',anoms.file)
+  file.copy(from=paste0(gcm.dir,'/',anoms.file),to=tmp.dir)
+  print(list.files(path=tmp.dir))
 
+  base.file <- paste0(tmp.dir,anoms.file)
+  print('Before loop')
+  print(list.files(path=tmp.dir))
   ##Split into 1-year files
     for (y in years) {
+      print('Start of loop')
+      print(list.files(path=tmp.dir))
       ytm <- proc.time()
 
       ##Subset to 5-Year File
@@ -52,23 +59,28 @@ interp.bccaq <- function(var.name,gcm,scenario,interval,grid.file,years,base.dir
       print(work)
       system(work)
 
-      move.back <- paste0('rsync -av ',interp.file,' ',gcm.dir,'/interpolated/')
-      print(move.back)
-      system(move.back)
+      ##move.back <- paste0('rsync -av ',interp.file,' ',gcm.dir,'/interpolated/')
+      ##print(move.back)
+      ##system(move.back)
+      file.copy(from=interp.file,to=write.dir)
 
-      clean.up <- paste0('rm ',interp.file)
-      print(clean.up)
-      system(clean.up)	
-
-      clean.up <- paste0('rm ',tmp.file)
-      print(clean.up)
-      system(clean.up)	
+      ##clean.up <- paste0('rm ',interp.file)
+      ##print(clean.up)
+      ##system(clean.up)	
+      file.remove(interp.file)                          
+      
+      ##clean.up <- paste0('rm ',tmp.file)
+      ##print(clean.up)
+      ##system(clean.up)	
+      file.remove(tmp.file)
+      print('End of loop')
+      print(list.files(path=tmp.dir))
 
     }
-  
-    clean.up <- paste0('rm ',base.file) ##This is the anomaly file
-    print(clean.up)
-    system(clean.up)	
+    file.remove(base.file)  
+    ##clean.up <- paste0('rm ',base.file) ##This is the anomaly file
+    ##print(clean.up)
+    ##system(clean.up)	
 
   gc()  
 }
@@ -88,12 +100,12 @@ run.interp <- function() {
       eval(parse(text=args[[i]]))
   }
 
-##gcm <- 'CanESM2'
-##varname <- 'tasmax'
-##scenario <- 'rcp45'
+##gcm <- 'HadGEM2-ES'
+##varname <- 'pr'
+##scenario <- 'rcp85'
 ##tmpdir <- '/local_temp/ssobie/interpolate/'
 
-  tmp.dir <- tmpdir
+  tmp.dir <- paste0(tmpdir,gcm,'/',varname,'/')
   if (!file.exists(tmp.dir)) {
      dir.create(tmp.dir,recursive=T)
   }
@@ -102,12 +114,13 @@ run.interp <- function() {
 ##  grid.file <- '/home/ssobie/assessments/bc.prism.grid.txt'
 
   base.dir <- '/storage/data/climate/downscale/BCCAQ2+PRISM/high_res_downscaling/bccaq_gcm_bc_subset/'
+  write.dir <- paste0('/storage/data/climate/downscale/CMIP5_delivery/',gcm,'/interpolated/')
   grid.file <- '/storage/home/ssobie/grid_files/bc.prism.grid.txt'
 
   years <- seq(1951,2000,by=1)	
-  interp.bccaq(varname,gcm,scenario,'1951-2000',grid.file,years,base.dir,tmp.dir)
+  interp.bccaq(varname,gcm,scenario,'1951-2000',grid.file,years,base.dir,write.dir,tmp.dir)
   years <- seq(2001,2100,by=1)	
-  interp.bccaq(varname,gcm,scenario,'2001-2100',grid.file,years,base.dir,tmp.dir) 
+  interp.bccaq(varname,gcm,scenario,'2001-2100',grid.file,years,base.dir,write.dir,tmp.dir) 
 
   clean.up <- paste("rm ",tmp.dir,"/*nc" ,sep='')
   print(clean.up)

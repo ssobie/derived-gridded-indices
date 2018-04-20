@@ -8,7 +8,7 @@ library(PCICt)
 ################################################################################
 
 split.and.concatenate <- function(var.name,gcm,scenario,run,
-				  lat.st,lat.en,year.list,base.dir,tmp.dir) {
+				  lat.st,lat.en,year.list,base.dir,read.dir,tmp.dir) {
 
   ##Split off one latitude band from each of the year files				  					    
   split.files <- rep('A',length=length(year.list))
@@ -20,9 +20,9 @@ split.and.concatenate <- function(var.name,gcm,scenario,run,
     bccaq.file <- paste0(var.name,'_gcm_prism_BCCAQ2_',gcm,'_',scenario,'_',run,'_',year,'.nc')
     ##rtm <- proc.time()
     ##file.copy(from=paste0(gcm.dir,'daily_prism/',bccaq.file), to=tmp.dir)
-    bccaq.tmp <- paste0(gcm.dir,'daily_prism/',bccaq.file)
+    bccaq.tmp <- paste0(read.dir,'daily_prism/',bccaq.file)
           
-    split.tmp <- paste0(gcm.dir,'daily_prism/',var.name,'_gcm_prism_BCCAQ2_',gcm,'_',scenario,'_',run,'_',year,'_',lat.st,'-',lat.en,'.nc')
+    split.tmp <- paste0(read.dir,'daily_prism/',var.name,'_gcm_prism_BCCAQ2_',gcm,'_',scenario,'_',run,'_',year,'_',lat.st,'-',lat.en,'.nc')
     split.files[y] <- split.tmp
     print('Split File')		
     print(split.tmp)
@@ -40,7 +40,7 @@ split.and.concatenate <- function(var.name,gcm,scenario,run,
   series.file <- paste0(var.name,'_gcm_prism_BCCAQ2_',gcm,'_',scenario,'_',run,'_',yst,'-',yen,'_',lat.st,'-',lat.en,'.nc')
   ##Concatenate the Split files into one latitude band with a full time series
   atm <- proc.time()
-  cat.files <- paste0('ncrcat ',paste(split.files,collapse=' '),' ',gcm.dir,'lat_split/',series.file) 
+  cat.files <- paste0('ncrcat ',paste(split.files,collapse=' '),' ',read.dir,'lat_split/',series.file) 
   print(cat.files)
   system(cat.files)
   print('Concatenate time:')
@@ -48,7 +48,8 @@ split.and.concatenate <- function(var.name,gcm,scenario,run,
 
   ##mtm <- proc.time()
   ##file.copy(from=paste0(tmp.dir,series.file),to=paste0(gcm.dir,'lat_split/'))
-  file.remove(paste0(gcm.dir,'daily_prism/',split.files))
+  print(paste0(read.dir,'daily_prism/',split.files))
+  file.remove(paste0(split.files))
   ##file.remove(paste0(tmp.dir,'/',series.file))
   gc()
 
@@ -62,10 +63,11 @@ for(i in 1:length(args)){
     eval(parse(text=args[[i]]))
 }
 
-##gcm <- 'CSIRO-Mk3-6-0'
-##scenario <- 'rcp85'
-##tmpdir <- '/local_scratch/ssobie/split/'
-##varname <- 'tasmax'
+###gcm <- 'inmcm4'
+###scenario <- 'rcp85'
+###tmpdir <- '/local_scratch/ssobie/split/'
+####varname <- 'pr'
+###run <- 'r1i1p1'
 
 tmp.dir <- tmpdir
 if (!file.exists(tmp.dir)) {
@@ -73,14 +75,16 @@ if (!file.exists(tmp.dir)) {
 }
 
 base.dir <- '/storage/data/climate/downscale/BCCAQ2+PRISM/high_res_downscaling/bccaq_gcm_bc_subset/'
+###read.dir <- paste0(base.dir,gcm,'/')
+read.dir <- '/storage/data/climate/downscale/CMIP5_delivery/'
 
 var.list <- varname ##c('tasmax') ##,'tasmin','pr')
 
 lat.st <- format(seq(48.0,59.9,0.1),nsmall=1)
 lat.en <- format(seq(48.1,60.0,0.1),nsmall=1)
 
-lat.st <- format(seq(59.2,59.9,0.1),nsmall=1) ##59.9,0.1),nsmall=1)
-lat.en <- format(seq(59.3,60.0,0.1),nsmall=1) ##60.0,0.1),nsmall=1)
+lat.st <- format(seq(57.9,59.9,0.1),nsmall=1)
+lat.en <- format(seq(58.0,60.0,0.1),nsmall=1)
 len <- length(lat.st)
 
 for (var.name in var.list) {
@@ -121,7 +125,7 @@ for (var.name in var.list) {
     print(lat.st[i])
     print(lat.en[i])
     split.and.concatenate(var.name,gcm,scenario,run,
-                          lat.st[i],lat.en[i],year.list,base.dir,tmp.dir)
+                          lat.st[i],lat.en[i],year.list,base.dir,read.dir,tmp.dir)
     print('Splitting loop time for one lat band:')
     print(proc.time()-itm)    		
 			  

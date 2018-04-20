@@ -1,6 +1,6 @@
 ##Script to clean up temporary directories
 
-tmp.dir <- '/local_temp/ssobie/prism/'
+tmp.dir <- '/local_temp/ssobie/'
 print(list.files(path=tmp.dir,recursive=T))
 
 ##file.copy(from='/local_temp/ssobie/prism/rcp85/climdex/gslETCCDI_ann_BCCAQ2-PRISM_CNRM-CM5_rcp85_r1i1p1_1951-2100.nc',

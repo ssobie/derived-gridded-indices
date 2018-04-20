@@ -153,6 +153,36 @@ annual.extremes.for.model <- function(ext.name,ext.ncs,lat.ix,n.lon,yearly.fac,f
     rm(ext.avg.matrix)		
 }
 
+
+##----------------------------------------------------------------------------------------------
+annual.quantiles.for.model <- function(quant.name,quant.value,quant.ncs,lat.ix,n.lon,yearly.fac,flag,
+                                       quant.list) {
+
+   flen <- sum(!flag)     
+   sub.list <- quant.list[!flag] 
+   quant.fx  <- function(data,fac,pctl){tapply(data,fac,quantile,pctl,na.rm=T)}
+
+   ##Variables
+   quant.val <- as.numeric(quant.value)/1000
+   print(quant.val)
+   quant.avg.values <- foreach(
+                           data=sub.list,
+                           .export=c('yearly.fac','quant.fx','quant.val')
+                           ) %do% {
+                                quant.avg.values <- quant.fx(data,yearly.fac,quant.val)
+                           }
+   ncol <- length(quant.avg.values[[1]])
+   quant.avg.matrix <- matrix(NA,nrow=n.lon,ncol=ncol)
+   sub.matrix <- matrix(unlist(quant.avg.values),nrow=flen,ncol=ncol,byrow=TRUE)
+   rm(quant.avg.values)
+   quant.avg.matrix[!flag,] <- sub.matrix
+   rm(sub.matrix)
+   ncvar_put(quant.ncs,varid=quant.name,vals=quant.avg.matrix,
+             start=c(1,lat.ix,1),count=c(-1,1,-1))
+  rm(quant.avg.matrix)		
+  gc()
+}
+
 ##--------------------------------------------------------------
 ##****************************************************************
 
@@ -163,18 +193,23 @@ if (1==1) {
   }
 }
 
-tmp.dir <- tmpdir ##'/local_temp/ssobie/prism/' ##tmpdir
+##tmp.dir <- tmpdir ##'/local_temp/ssobie/prism/' ##tmpdir
+tmp.dir <- paste0(tmpdir,'/',gcm,'_',type,'_',pctl,'_',varname,'/') ## '/local_temp/ssobie/prism/' ##tmpdir
 
 ##gcm <- 'CNRM-CM5'
 ##scenario <- 'rcp85'
 ##run <- 'r1i1p1'
 ##interval <- '1951-2100'
-##type <- 'annual'
-##varname <- 'pr'
+##type <- 'annual_quantiles'
+##varname <- 'tasmin'
+##pctl <- '004'
 
 ##Latitude Bands
 lat.st <- seq(48.1,59.9,0.1) ##format(seq(48.0,59.9,0.1),nsmall=1)
 lat.en <- seq(48.2,60.0,0.1) ##format(seq(48.1,60.0,0.1),nsmall=1)
+
+###lat.st <- seq(48.1,48.1,0.1) ##format(seq(48.0,59.9,0.1),nsmall=1)
+###lat.en <- seq(48.2,48.2,0.1) ##format(seq(48.1,60.0,0.1),nsmall=1)
 
 len <- length(lat.st)
 
@@ -185,8 +220,15 @@ if (cedar) {
 }
 
 data.dir <- paste0(base.dir,gcm,'/lat_split/')
+##data.dir <- paste0('/storage/data/climate/downscale/CMIP5_delivery/lat_split/')
+
 template.dir <- paste0(base.dir,gcm,'/template/',scenario,'/',type,'/')
 template.file <- list.files(path=template.dir,pattern=varname)
+
+if (grepl('annual_quantile',type)) {
+ template.file <- template.file[grep(pctl,template.file)]
+}
+
 
 ##Move data to local storage for better I/O
 if (!file.exists(tmp.dir)) {
@@ -223,6 +265,7 @@ if (type=='annual') {
 if (type=='annual_extremes') {
 ##Annual Block Maxima Files for writing
   print('Ann extremes opening')
+  ext.name <- varname
   ext.type <- switch(ext.name,
                      pr='maximum',tasmax='maximum',tasmin='minimum')
   ext.dir <- paste0(tmp.dir,scenario,'/annual_extremes/')
@@ -230,10 +273,23 @@ if (type=='annual_extremes') {
   ext.ncs <- nc_open(ext.file,write=TRUE)
   common.lat <- ncvar_get(ext.ncs,'lat')
 }
+
+##---------------------------------------------------------------------------
+if (grepl('annual_quantile',type)) {
+  ##Annual Quantile Files for writing
+  print('Ann quantiles opening')
+  quant.dir <- paste0(tmp.dir,scenario,'/annual_quantiles/')
+  quant.file <- paste0(quant.dir,varname,'_annual_quantile_',sprintf("%s",pctl),'_BCCAQ2_PRISM_',gcm,'_',scenario,'_',run,'_',interval,'.nc')
+  print(quant.file)
+  quant.ncs <- nc_open(quant.file,write=TRUE)
+  common.lat <- ncvar_get(quant.ncs,'lat')
+}
+
 ##---------------------------------------------------------------------------
 if (type=='seasonal') {
 ##Seasonal Average Files for writing
   print('Seasonal averages opening')
+  seas.name <- varname
   seas.dir <- paste0(tmp.dir,scenario,'/seasonal/')
   seas.file <- paste0(seas.dir,seas.name,'_seasonal_BCCAQ2_PRISM_',gcm,'_',scenario,'_',run,'_',interval,'.nc')
   seas.ncs <- nc_open(seas.file,write=TRUE)
@@ -279,17 +335,17 @@ for (i in 1:len) {
   print('Latitude bands:')
   print(lat.bnds)
 
-  for (i in 1:n.lat) { ##n.lon) {
-    lat.ix <- lat.match[i]
+  for (j in 1:n.lat) { ##n.lon) {
+    lat.ix <- lat.match[j]
     ltm <- proc.time()
 
-    print(paste0('Latitude: ',i,' of ',n.lat))
-    input.subset <- ncvar_get(input.nc,varname,start=c(1,i,1),count=c(-1,1,-1))
+    print(paste0('Latitude: ',j,' of ',n.lat))
+    input.subset <- ncvar_get(input.nc,varname,start=c(1,j,1),count=c(-1,1,-1))
     flag <- is.na(input.subset[,1])
     input.list <- vector(mode='list',length=n.lon)
 
     rtm <- proc.time()     
-    input.list <- lapply(seq_len(nrow(input.subset)), function(i) input.subset[i,])
+    input.list <- lapply(seq_len(nrow(input.subset)), function(k) input.subset[k,])
     rm(input.subset)
     print('Lapply convert to list')
     print(proc.time()-rtm) 
@@ -332,6 +388,16 @@ for (i in 1:len) {
     print(proc.time()-rtm) 
     }
     ##----------------------------------------------------------
+    if (type=='annual_quantiles') {
+    ##Annual Quantiles
+    rtm <- proc.time()     
+    annual.quantiles.for.model(varname,pctl,quant.ncs,lat.ix,n.lon,yearly.fac,flag,
+                              input.list)
+    print('Annual Quantiles Time')
+    print(proc.time()-rtm) 
+    }
+    ##----------------------------------------------------------
+
     rm(input.list)
 
     print('Lon loop time')
@@ -347,8 +413,13 @@ for (i in 1:len) {
 write.dir <- paste0(base.dir,gcm)
 
 ##file.copy(from=paste0(tmp.dir,scenario,"/",type,"/"),to=paste0(write.dir,'/',scenario,'/'),overwrite=TRUE,recursive=TRUE)
-file.copy(from=paste0(tmp.dir,scenario,"/",type,"/",template.file),to=paste0(write.dir,'/',scenario,'/',type,'/'),overwrite=TRUE)
+print('from')
+print(paste0(tmp.dir,scenario,"/",type,"/",template.file))
+print('to')
+print(paste0(write.dir,'/',scenario,'/',type,'/'))
 
+
+  file.copy(from=paste0(tmp.dir,scenario,"/",type,"/",template.file),to=paste0(write.dir,'/',scenario,'/',type,'/'),overwrite=TRUE)
 
 if (type=='annual') {
    nc_close(ann.ncs)
@@ -364,6 +435,10 @@ if (type=='monthly') {
 
 if (type=='annual_extremes') {
     nc_close(ext.ncs)
+}
+
+if (type=='annual_quantiles') {
+    nc_close(quant.ncs)
 }
 
 

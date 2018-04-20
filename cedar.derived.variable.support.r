@@ -1,6 +1,6 @@
 ##Script to contain necessary functions for calculating the derived variables
 ##for the 800m data
-
+library(climdex.pcic)
 ##----------------------------------------------------------
 ##Degree Days
 
@@ -29,6 +29,9 @@ fdd<-function(data,fac){tapply(-data,fac,dd, tbase=0)} ##Freezing degree days
 ffd<-function(data,fac){tapply(data,fac,fd)} ##Frost Free days
 s30<-function(data,fac){tapply(data,fac,s3)} ##Days over 30 degC
 
+quant.fxn  <- function(data,fac,pctl){tapply(data,fac,quantile,pctl,na.rm=T)}
+
+
 dd.fxns <- list(gdd=gdd,
                 cdd=cdd,
                 hdd=hdd,
@@ -39,7 +42,9 @@ dd.fxns <- list(gdd=gdd,
 ##Annual Averages 
 ann.fxns <- list(tasmax=function(data,fac){tapply(data,fac,mean)},
                  tasmin=function(data,fac){tapply(data,fac,mean)},
-                 pr=function(data,fac){tapply(data,fac,sum)})
+                 pr=function(data,fac){tapply(data,fac,sum)},
+                 gsl=function(data,fac,dates){growing.season.length(data,fac,dates,northern.hemisphere=TRUE)})
+
 
 ##----------------------------------------------------------
 ##Seasonal Averages 
@@ -51,13 +56,17 @@ seas.fxns <- list(tasmax=function(data,fac){tapply(data,fac,mean)},
 ##Monthly Averages 
 mon.fxns <- list(tasmax=function(data,fac){tapply(data,fac,mean)},
                  tasmin=function(data,fac){tapply(data,fac,mean)},
-                 pr=function(data,fac){tapply(data,fac,sum)})
+                 pr=function(data,fac){tapply(data,fac,sum)},
+                 dtr=function(data,fac){tapply(data,fac,mean)})
 
 ##----------------------------------------------------------
 ##Annual Extremes
 ext.fxns <- list(tasmax=function(data,fac){tapply(data,fac,max)},
                  tasmin=function(data,fac){tapply(data,fac,min)},
                  pr=function(data,fac){tapply(data,fac,max)})
+
+##----------------------------------------------------------
+##Annual Quantiles
 
 
 
@@ -87,8 +96,8 @@ get.climdex.info <- function(climdex.name) {
                         climdex.r20mm=c('r20mmETCCDI','Ann','days'),
                         climdex.cdd=c('cddETCCDI','Ann','days'),
                         climdex.cwd=c('cwdETCCDI','Ann','days'),
-                        climdex.r95ptot=c('r95pETCCDI','Ann','mm'),
-                        climdex.r99ptot=c('r99pETCCDI','Ann','mm'),
+                        climdex.r95p=c('r95pETCCDI','Ann','mm'),
+                        climdex.r99p=c('r99pETCCDI','Ann','mm'),
                         climdex.prcptot=c('prcptotETCCDI','Ann','mm'),
                         climdex.r95days=c('r95daysETCCDI','Ann','days'),
                         climdex.r99days=c('r99daysETCCDI','Ann','days'),
@@ -190,8 +199,8 @@ clim.fxns <- list(climdex.fd=climdex.fd,
                   climdex.r20mm=climdex.r20mm,
                   climdex.cdd=climdex.cdd,
                   climdex.cwd=climdex.cwd,
-                  climdex.r95ptot=climdex.r95ptot,
-                  climdex.r99ptot=climdex.r99ptot,
+                  climdex.r95p=climdex.r95ptot,
+                  climdex.r99p=climdex.r99ptot,
                   climdex.prcptot=climdex.prcptot,
                   climdex.r95days=climdex.r95days,
                   climdex.r99days=climdex.r99days,

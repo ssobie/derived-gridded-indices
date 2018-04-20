@@ -6,10 +6,9 @@
 
 library(ncdf4)
 library(PCICt)
-library(climdex.pcic)
 
 library(doParallel)
-registerDoParallel(cores=4) 
+registerDoParallel(cores=2) 
 
 ##--------------------------------
 ##Degree Day Values
@@ -40,7 +39,8 @@ s30<-function(data,fac){tapply(data,fac,s3)} ##Days over 30 degC
 dd.fxns <- list(gdd=gdd,
                 cdd=cdd,   
                 hdd=hdd,
-                fdd=fdd)
+                fdd=fdd,
+                s30=s30)
 
 create.base.files <- function(degree.name,gcm,scenario,type=NULL,
                               past.int,proj.int,new.int,
@@ -48,8 +48,8 @@ create.base.files <- function(degree.name,gcm,scenario,type=NULL,
 
   ##files <- list.files(path=data.dir,pattern=gcm,full.name=TRUE)
   scen.all <- list.files(path=paste(data.dir,gcm,sep=''),pattern='tasmax_day',full.name=TRUE)
-  ##files.all <- list.files(path=paste(data.dir,gcm,sep=''),pattern='tasmax_gcm_prism',full.name=TRUE)
-  files.all <- scen.all[grep(scenario,scen.all)]
+  files.all <- list.files(path=paste(data.dir,gcm,sep=''),pattern='tasmax_gcm_prism',full.name=TRUE)
+  ##files.all <- scen.all[grep(scenario,scen.all)]
   past.file <- files.all[grep(past.int,files.all)]
   proj.file <- files.all[grep(proj.int,files.all)]
 
@@ -148,59 +148,56 @@ create.base.files <- function(degree.name,gcm,scenario,type=NULL,
 
 ##---------------------------------------------------------------
 
-
-
-
 degree.days.for.model <- function(gcm,scenario,interval,type=NULL,
                                   degree.names,
                                   past.int,proj.int,new.int,
                                   data.dir,write.dir) {
   tasmax.scen <- list.files(path=paste(data.dir,gcm,sep=''),pattern='tasmax_day',full.name=TRUE)   
-  tasmax.files <- tasmax.scen[grep(scenario,tasmax.scen)]
-  ##tasmax.files <- list.files(path=paste(data.dir,gcm,sep=''),pattern='tasmax_gcm_prism',full.name=TRUE)
+  ##tasmax.files <- tasmax.scen[grep(scenario,tasmax.scen)]
+  tasmax.files <- list.files(path=paste(data.dir,gcm,sep=''),pattern='tasmax_gcm_prism',full.name=TRUE)
   tasmax.past.file <- tasmax.files[grep(past.int,tasmax.files)]
   tasmax.proj.file <- tasmax.files[grep(proj.int,tasmax.files)]
  
-  tasmin.scen <- list.files(path=paste(data.dir,gcm,sep=''),pattern='tasmin_day',full.name=TRUE)
-  tasmin.files <- tasmin.scen[grep(scenario,tasmin.scen)]
-  ##tasmin.files <- list.files(path=paste(data.dir,gcm,sep=''),pattern='tasmin_gcm_prism',full.name=TRUE)
-  tasmin.past.file <- tasmin.files[grep(past.int,tasmin.files)]
-  tasmin.proj.file <- tasmin.files[grep(proj.int,tasmin.files)]
+###  tasmin.scen <- list.files(path=paste(data.dir,gcm,sep=''),pattern='tasmin_day',full.name=TRUE)
+###  tasmin.files <- tasmin.scen[grep(scenario,tasmin.scen)]
+###  ##tasmin.files <- list.files(path=paste(data.dir,gcm,sep=''),pattern='tasmin_gcm_prism',full.name=TRUE)
+###  tasmin.past.file <- tasmin.files[grep(past.int,tasmin.files)]
+###  tasmin.proj.file <- tasmin.files[grep(proj.int,tasmin.files)]
 
-  file.split <- strsplit(tasmin.past.file,'_')[[1]]
+  file.split <- strsplit(tasmax.past.file,'_')[[1]]
   run <- file.split[grep('r*i1p1',file.split)]
 
   hist.dir <- paste(write.dir,scenario,'/degree_days/',gcm,'/',sep='')    
 
-  degree.files <- list.files(path=hist.dir,pattern='dd',full.name=TRUE)
+  degree.files <- list.files(path=hist.dir,pattern='annual',full.name=TRUE)
   clim.ncs <- lapply(degree.files,nc_open,write=TRUE)
-    
+
   ##--------------------------------------------------------------
 
   tasmax.past.nc <- nc_open(tasmax.past.file,write=FALSE)
-  tasmin.past.nc <- nc_open(tasmin.past.file,write=FALSE)
+###  tasmin.past.nc <- nc_open(tasmin.past.file,write=FALSE)
 
   tasmax.proj.nc <- nc_open(tasmax.proj.file,write=FALSE)
-  tasmin.proj.nc <- nc_open(tasmin.proj.file,write=FALSE)
+###  tasmin.proj.nc <- nc_open(tasmin.proj.file,write=FALSE)
   
-  tn.units <- ncatt_get(tasmin.past.nc,'tasmin')$units
+  tn.units <- ncatt_get(tasmax.past.nc,'tasmax')$units
   temp.offset <- 0
   if (tn.units == 'K')
     temp.offset <- 273
   
   ##Attributes to retain
-  lon <- ncvar_get(tasmin.past.nc,'lon')
-  lat <- ncvar_get(tasmin.past.nc,'lat')  
+  lon <- ncvar_get(tasmax.past.nc,'lon')
+  lat <- ncvar_get(tasmax.past.nc,'lat')  
   n.lon <- length(lon)
   n.lat <- length(lat)
 
   ##Combine the dates
-  time.atts <- ncatt_get(tasmin.past.nc,'time')
+  time.atts <- ncatt_get(tasmax.past.nc,'time')
   time.calendar <- time.atts$calendar
   time.units <- time.atts$units
   past.origin <- as.PCICt(strsplit(time.units, ' ')[[1]][3],
                           cal=time.calendar)
-  proj.time.atts <- ncatt_get(tasmin.proj.nc,'time')
+  proj.time.atts <- ncatt_get(tasmax.proj.nc,'time')
   proj.time.calendar <- proj.time.atts$calendar
   proj.time.units <- proj.time.atts$units
   
@@ -213,27 +210,29 @@ degree.days.for.model <- function(gcm,scenario,interval,type=NULL,
   tasmax.dates <- c(past.origin + tasmax.past.values*86400,
                     proj.origin + tasmax.proj.values*86400)
   
-  tasmin.past.values <- ncvar_get(tasmin.past.nc,'time')
-  tasmin.proj.values <- ncvar_get(tasmin.proj.nc,'time')
-  tasmin.time.values <- c(tasmin.past.values,tasmin.proj.values)
-  tasmin.dates <- c(past.origin + tasmin.past.values*86400,
-                    proj.origin + tasmin.proj.values*86400)
-  yearly.fac <- as.factor(format(tasmin.dates,'%Y'))
+###  tasmin.past.values <- ncvar_get(tasmin.past.nc,'time')
+###  tasmin.proj.values <- ncvar_get(tasmin.proj.nc,'time')
+###  tasmin.time.values <- c(tasmin.past.values,tasmin.proj.values)
+###  tasmin.dates <- c(past.origin + tasmin.past.values*86400,
+###                    proj.origin + tasmin.proj.values*86400)
+  yearly.fac <- as.factor(format(tasmax.dates,'%Y'))
   ##--------------------------------------------------------------
   ##Compute degree day values and load into newly created netcdf
   for (i in 1:n.lon) {
     print(paste('Lon: ',i,' in ',n.lon,sep=''))
 #    for (j in 1:n.lat) {
     tasmax.past.subset <- ncvar_get(tasmax.past.nc,'tasmax',start=c(i,1,1),count=c(1,-1,-1))-temp.offset
-    tasmin.past.subset <- ncvar_get(tasmin.past.nc,'tasmin',start=c(i,1,1),count=c(1,-1,-1))-temp.offset
+###    tasmin.past.subset <- ncvar_get(tasmin.past.nc,'tasmin',start=c(i,1,1),count=c(1,-1,-1))-temp.offset
     
     tasmax.proj.subset <- ncvar_get(tasmax.proj.nc,'tasmax',start=c(i,1,1),count=c(1,-1,-1))-temp.offset
-    tasmin.proj.subset <- ncvar_get(tasmin.proj.nc,'tasmin',start=c(i,1,1),count=c(1,-1,-1))-temp.offset
+###    tasmin.proj.subset <- ncvar_get(tasmin.proj.nc,'tasmin',start=c(i,1,1),count=c(1,-1,-1))-temp.offset
         
     tasmax.subset <- cbind(tasmax.past.subset,tasmax.proj.subset)
-    tasmin.subset <- cbind(tasmin.past.subset,tasmin.proj.subset)
+##    tasmin.subset <- cbind(tasmin.past.subset,tasmin.proj.subset)
     
-    temp.subset <- (tasmax.subset + tasmin.subset)/2 ##tasmin.subset ##
+    temp.subset <- tasmax.subset ##(tasmax.subset + tasmin.subset)/2 ##tasmin.subset ##
+    ##print('Check for input types')
+    ##browser()
     flag <- is.na(temp.subset[,1])
     temp.list <- list()
 
@@ -301,10 +300,10 @@ if (1==0) {
 degree.names <- c('cdd',
                   'gdd',
                   'hdd',
-                  'fdd')
-##                  's30')
+                  'fdd',
+                  's30')
 
-##degree.names <- 's30'
+degree.names <- 's30'
   
 ##  data.dir <-  '/home/data/projects/rci/data/stat.downscaling/scaling_comparison/gcm/'
 ##  write.dir <- '/home/data/projects/rci/data/stat.downscaling/scaling_comparison/gcm/climdex/'
@@ -322,7 +321,6 @@ degree.names <- c('cdd',
                 'MIROC5',
                 'MPI-ESM-LR',
                 'MRI-CGCM3')
-
 
   gcm.list <- c('ACCESS1-0',
                 'CanESM2',
@@ -438,14 +436,14 @@ run.bccaq.raw <- function() {
 run.bccaq.prism <- function() {
 ##Running BC only versions
   
-  scenario <- 'rcp45'
+  scenario <- 'rcp85'
   past.int <- '1951-2000'
   proj.int <- '2001-2100'
   new.int <- '1951-2100'
-  region <- 'bc'
+  region <- 'nanaimo'
 
-  data.dir <- paste('/storage/data/scratch/ssobie/bccaq_gcm_',region,'_subset/',sep='')
-  write.dir <- paste('/storage/data/scratch/ssobie/bccaq_gcm_',region,'_subset/',sep='')
+  data.dir <- paste('/storage/data/climate/downscale/BCCAQ2/high_res_downscaling/bccaq_gcm_',region,'_subset/',sep='')
+  write.dir <- paste('/storage/data/climate/downscale/BCCAQ2/high_res_downscaling/bccaq_gcm_',region,'_subset/',sep='')
 
    ##Move data to local storage for better I/O
   tmp.dir <- paste('/local_temp/ssobie/',region,'/',sep='')
@@ -453,12 +451,17 @@ run.bccaq.prism <- function() {
     dir.create(tmp.dir,recursive=TRUE)    
   
   degree.names <- sort(degree.names)
+  if ('s30' %in% degree.names) {
+    print('Make sure max temp is used for the input')
+    ##browser()
+  }
 
+  print(gcm.list)
   for (gcm in gcm.list) {
     print(gcm)
 
-    ##move.to <- paste("rsync -av ",data.dir,gcm,"/*gcm_prism* ",tmp.dir,gcm,sep='')
-    move.to <- paste("rsync -av ",data.dir,gcm,"/*day* ",tmp.dir,gcm,sep='')
+    move.to <- paste("rsync -av ",data.dir,gcm,"/*tasmax_gcm_prism* ",tmp.dir,gcm,sep='')
+    ##move.to <- paste("rsync -av ",data.dir,gcm,"/tasmax_day* ",tmp.dir,gcm,sep='')
     print(move.to)
     system(move.to)
 
@@ -484,6 +487,7 @@ run.bccaq.prism <- function() {
     clean.up.dd <- paste("rm ",tmp.dir,scenario,"/degree_days/",gcm,"/*nc" ,sep='')
     print(clean.up.dd)      
     system(clean.up.dd)
+
   }  
 }
 

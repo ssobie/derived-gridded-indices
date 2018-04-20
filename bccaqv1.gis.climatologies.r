@@ -2,7 +2,16 @@
 
 library(ncdf4)
 library(PCICt)
-library(raster)
+
+rcp26.list <- c('CanESM2',
+                'CCSM4',
+                'CNRM-CM5',
+                'CSIRO-Mk3-6-0',
+                'GFDL-ESM2G',
+                'HadGEM2-ES',
+                'MIROC5',
+                'MPI-ESM-LR',
+                'MRI-CGCM3')
 
 gcm.list <- c('ACCESS1-0',
               'CanESM2',
@@ -17,18 +26,6 @@ gcm.list <- c('ACCESS1-0',
               'MPI-ESM-LR',
               'MRI-CGCM3')
 
-gcm.list <- c('ACCESS1-0',
-              'CanESM2',
-              'CCSM4',
-              'CNRM-CM5',
-              'CSIRO-Mk3-6-0',
-              'inmcm4',
-              'MIROC5',
-              'MPI-ESM-LR',
-              'MRI-CGCM3')
-
-
-
 make.netcdf.file <- function(file.name,var.name,clim.data) {
 
     nc <- nc_open(file.name,write=TRUE)
@@ -41,56 +38,102 @@ make.netcdf.file <- function(file.name,var.name,clim.data) {
     nc_close(nc)    
 }
 
-create.degree.day.climatologies <- function(var.name,type,season,interval,gcm.list) {
+avg.sub.time <- function(day.file,seas.file,var.name,interval,read.dir,write.dir,fxn) {
+  print(paste(read.dir,day.file,sep=''))             
+  nc <- nc_open(paste(read.dir,day.file,sep=''))
+  time.atts <- ncatt_get(nc,'time')
+  time.calendar <- time.atts$calendar
+  time.units <- time.atts$units
+  time.values <- ncvar_get(nc,'time')
+  origin.pcict <- as.PCICt(strsplit(time.units, ' ')[[1]][3],
+                           cal=time.calendar)
+  time.series <- origin.pcict + time.values*86400
+  years <- format(time.series,'%Y')
+  yrs <- strsplit(interval,'-')[[1]]
+  
+  st <- head(grep(yrs[1],years),1)
+  en <- tail(grep(yrs[2],years),1)
+  if (length(en)==0) {
+    en <- length(years)
+  }   
+  len <- en-st+1
+  data <- ncvar_get(nc,var.name,start=c(1,1,st),count=c(-1,-1,len))
 
-  scenario <- 'rcp85'
-
-  proj.dir <-   '/storage/data/climate/downscale/BCCAQ2+PRISM/high_res_downscaling/bccaq_gcm_bc_subset/'
-  write.dir  <- paste0('/storage/data/climate/downscale/BCCAQ2+PRISM/high_res_downscaling/assessment_subsets/bc/',scenario,'/',type,'/ENSEMBLE/')
-  if (!file.exists(write.dir)) {
-     dir.create(write.dir,recursive=T)
+  yr.fac <- as.factor(years[st:en])
+  if (grepl(var.name,'(txxETCCDI_mon|tnxETCCDI_mon|txnETCCDI_mon|tnnETCCDI_mon|rx1dayETCCDI_mon|rx5dayETCCDI_mon)')) {
+    clim <- apply(data,c(1,2),function(x,y){mean(tapply(x,y,fxn),na.rm=T)},yr.fac)
+  } else {
+    clim <- apply(data,c(1,2),fxn,na.rm=TRUE)
   }
-  gx <- length(gcm.list)
-  lonc <- 3121
-  latc <- 1441
 
-  data.past <- array(NA,c(lonc,latc,gx))
-  print(var.name)
-  copy.dir <- paste0(proj.dir,'ACCESS1-0/rcp85/',type,'/climatologies/')
+  clim[is.infinite(clim)] <- NA
+  clim[is.nan(clim)] <- NA
+  nc_close(nc)
+  return(clim)
+
+}
+
+
+create.degree.day.climatologies <- function() {
+  ds.type <- 'bccaq'
+  var.list <- 's30' ##c('cdd','gdd','hdd','fdd') ##'s30' ##
+
+  past.int <- '1971-2000'
+  scenario <- 'rcp85'
+  region <- 'van_whistler'  
+  proj.dir <-  paste0('/storage/data/climate/downscale/BCCAQ2/high_res_downscaling/bccaq_gcm_',region,'_subset/rcp85/degree_days/')
+  write.dir  <- paste0('/storage/data/climate/downscale/BCCAQ2/high_res_downscaling/bccaq_gcm_',region,'_subset/gis_files/degree_days/')
+  if (!file.exists(write.dir))
+    dir.create(write.dir)
+
+  lonc <- 339
+  latc <- 171 
+
+  data.past <- array(NA,c(lonc,latc,12))
+##  data.2020s <- array(NA,c(lonc,latc,12))
+  data.2050s <- array(NA,c(lonc,latc,12))
+##  data.2080s <- array(NA,c(lonc,latc,12))
+
+  for (var.name in var.list) {
+    print(var.name)
+
     ##New files 
-    copy.files <- list.files(path=copy.dir,pattern=interval)
-    var.files <- copy.files[grep(var.name,copy.files)]
-    copy.file <- var.files[grep(season,var.files)]
-    new.file <- gsub('ACCESS1-0','ENSEMBLE',copy.file)
-    file.copy(from=paste0(copy.dir,copy.file),
-              to=paste0(write.dir,new.file))
-    file.split <- strsplit(copy.file,'_')[[1]]
-    run <- file.split[grep('r*i1p1',file.split)]
-
-    data.ens <- c()
+    system(paste('cdo -s -O timmean ',proj.dir,'ACCESS1-0/',var.name,'_annual_ACCESS1-0_rcp85_r1i1p1_1951-2100.nc ',
+                                      write.dir,var.name,'_ensemble_clim_rcp85_r1i1p1_1971-2000.nc ',sep=''))
+##    system(paste('cdo -s -O timmean ',proj.dir,'ACCESS1-0/',var.name,'_annual_ACCESS1-0_rcp85_r1i1p1_1951-2100.nc ',
+##                                      write.dir,var.name,'_ensemble_clim_rcp85_r1i1p1_2011-2040.nc ',sep=''))
+    system(paste('cdo -s -O timmean ',proj.dir,'ACCESS1-0/',var.name,'_annual_ACCESS1-0_rcp85_r1i1p1_1951-2100.nc ',
+                                      write.dir,var.name,'_ensemble_clim_rcp85_r1i1p1_2041-2070.nc ',sep=''))
+##    system(paste('cdo -s -O timmean ',proj.dir,'ACCESS1-0/',var.name,'_annual_ACCESS1-0_rcp85_r1i1p1_1951-2100.nc ',
+##                                      write.dir,var.name,'_ensemble_clim_rcp85_r1i1p1_2071-2100.nc ',sep=''))
 
     for (g in seq_along(gcm.list)) {
       gcm <- gcm.list[g]
       print(gcm)
-      read.dir <- paste(proj.dir,gcm,'/rcp85/',type,'/climatologies/',sep='')
-      all.files <- list.files(path=read.dir,pattern=interval)
-      var.files <- all.files[grep(var.name,all.files)]
-      seas.file <- var.files[grep(season,var.files)]
-      box.read <- brick(paste0(read.dir,seas.file))
+      read.dir <- paste(proj.dir,gcm,'/',sep='')
+      dd.file <- list.files(path=read.dir,pattern=paste(var.name,'_annual',sep=''))
 
-      if (is.null(data.ens)) {
-        data.ens <- box.read
-      } else {
-        data.ens <- stack(data.ens,box.read)
-      }
+      data.past[,,g] <- avg.sub.time(dd.file,write.past,var.name,interval=past.int,read.dir,write.dir,mean)
+##      data.2020s[,,g] <- avg.sub.time(dd.file,write.proj,var.name,interval='2011-2040',read.dir,write.dir,mean)
+      data.2050s[,,g] <- avg.sub.time(dd.file,write.proj,var.name,interval='2041-2070',read.dir,write.dir,mean)
+##      data.2080s[,,g] <- avg.sub.time(dd.file,write.proj,var.name,interval='2071-2100',read.dir,write.dir,mean)
     }##GCM Loop   
 
-    data.tmp <- aperm(as.matrix(calc(data.ens,mean)),c(2,1))
-    data.write <- data.tmp[,ncol(data.tmp):1]
+    clim.past <- apply(data.past,c(1,2),mean,na.rm=TRUE)  
+##    clim.2020s <- apply(data.2020s,c(1,2),mean,na.rm=TRUE)  
+    clim.2050s <- apply(data.2050s,c(1,2),mean,na.rm=TRUE)  
+##    clim.2080s <- apply(data.2080s,c(1,2),mean,na.rm=TRUE)  
 
-    file.write <- paste0(write.dir,new.file)
-    make.netcdf.file(file.write,var.name,data.write)  
-
+    file.past <- paste0(write.dir,var.name,'_ensemble_clim_rcp85_r1i1p1_1971-2000.nc')
+    make.netcdf.file(file.past,var.name,clim.past)  
+##    file.2020s <- paste0(write.dir,var.name,'_ensemble_clim_rcp85_r1i1p1_2011-2040.nc')
+##    make.netcdf.file(file.2020s,var.name,clim.2020s)  
+    file.2050s <- paste0(write.dir,var.name,'_ensemble_clim_rcp85_r1i1p1_2041-2070.nc')
+    make.netcdf.file(file.2050s,var.name,clim.2050s)  
+##    file.2080s <- paste0(write.dir,var.name,'_ensemble_clim_rcp85_r1i1p1_2071-2100.nc')
+##    make.netcdf.file(file.2080s,var.name,clim.2080s)  
+    
+  }##Variable Loop
 }
 
 get.clim.fxn <- function(var.name) {
@@ -398,13 +441,4 @@ create.seasonal.climatologies <- function() {
     
     }##Variable Loop
   }##Season Loop
-}
-
-intervals <- c('1971-2000','2011-2040','2041-2070','2071-2100')
-var.list <- c('cdd','gdd','hdd','fdd')
-
-for (interval in intervals) {
-  for (var.name in var.list) {
-    create.degree.day.climatologies(var.name,'degree_days','annual',interval,gcm.list)
-  }
 }

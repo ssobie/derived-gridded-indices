@@ -11,6 +11,9 @@ library(climdex.pcic)
 library(doParallel)
 registerDoParallel(cores=4)
 
+##-----------------------------------------------
+##Extra Climdex Functions
+
 climdex.r95days <- function(clim.object) {
 
   years <- as.Date(paste(unique(format(clim.object@dates,'%Y')),'-01-16',sep=''))
@@ -21,6 +24,7 @@ climdex.r95days <- function(clim.object) {
   q.obj <- get.outofbase.quantiles(prec=clim.object@data$prec,prec.dates=clim.object@dates,
                                                  base=c(1971,2000))
   q.95 <- number.days.op.threshold(clim.object@data$prec,date.factor=clim.object@date.factors$annual, q.obj$prec[1], op = ">")
+
   return(q.95)
 }
 
@@ -33,9 +37,50 @@ climdex.r99days <- function(clim.object) {
     return(na.rv)
   q.obj <- get.outofbase.quantiles(prec=clim.object@data$prec,prec.dates=clim.object@dates,
                                                  base=c(1971,2000))
-  q.99 <- number.days.op.threshold(clim.object@data$prec,date.factor=clim.object@date.factors$annual, q.obj$prec[1], op = ">")
+  q.99 <- number.days.op.threshold(clim.object@data$prec,date.factor=clim.object@date.factors$annual, q.obj$prec[2], op = ">")
   return(q.99)
 }
+
+climdex.r95store <- function(clim.object) {
+
+  years <- as.Date(paste(unique(format(clim.object@dates,'%Y')),'-01-16',sep=''))
+  q.obj <- get.outofbase.quantiles(prec=clim.object@data$prec,prec.dates=clim.object@dates,
+                                                 base=c(1971,2000))
+  r95 <- q.obj$prec[1]
+  r95.rv <- rep(r95,length(years))
+  return(r95.rv)
+}
+
+climdex.r99store <- function(clim.object) {
+
+  years <- as.Date(paste(unique(format(clim.object@dates,'%Y')),'-01-16',sep=''))
+  q.obj <- get.outofbase.quantiles(prec=clim.object@data$prec,prec.dates=clim.object@dates,
+                                                 base=c(1971,2000))
+  r99 <- q.obj$prec[2]
+  r99.rv <- rep(r99,length(years)) 
+  return(r99.rv)
+}
+
+
+climdex.heatwave <- function(ci) {
+    spells.can.span.years <- FALSE            
+    stopifnot(!is.null(ci@data$tmax) && !is.null(ci@quantiles$tmax))
+    return(threshold.exceedance.duration.index(ci@data$tmax, 
+        ci@date.factors$monthly, ci@jdays, ci@quantiles$tmax$outbase$q90, 
+        ">", min.length=3,spells.can.span.years = spells.can.span.years, max.missing.days = ci@max.missing.days["monthly"]) * 
+        ci@namasks$annual$tmax)
+}
+
+climdex.rx2day <- function(ci, freq="monthly",center.mean.on.last.day = FALSE) 
+{
+    stopifnot(!is.null(ci@data$prec))
+    return(nday.consec.prec.max(ci@data$prec, ci@date.factors[[match.arg(freq)]], 
+        2, center.mean.on.last.day) * ci@namasks[[match.arg(freq)]]$prec)
+}
+
+
+
+##-----------------------------------------------
 
  
 clim.fxns <- list(climdex.fd=climdex.fd,
@@ -55,6 +100,7 @@ clim.fxns <- list(climdex.fd=climdex.fd,
                   climdex.csdi=climdex.csdi,
                   climdex.dtr=climdex.dtr,
                   climdex.rx1day=climdex.rx1day,
+                  climdex.rx2day=climdex.rx2day,
                   climdex.rx5day=climdex.rx5day,
                   climdex.sdii=climdex.sdii,
                   climdex.r10mm=climdex.r10mm,
@@ -65,8 +111,9 @@ clim.fxns <- list(climdex.fd=climdex.fd,
                   climdex.r99ptot=climdex.r99ptot,
                   climdex.prcptot=climdex.prcptot,
                   climdex.r95days=climdex.r95days,
-                  climdex.r99days=climdex.r99days)
-
+                  climdex.r99days=climdex.r99days,
+                  climdex.r95store=climdex.r95store,
+                  climdex.r99store=climdex.r99store)
 
 
 get.climdex.info <- function(climdex.name) {
@@ -88,6 +135,7 @@ get.climdex.info <- function(climdex.name) {
                         climdex.csdi=c('csdiETCCDI','Ann','days'),
                         climdex.dtr=c('dtrETCCDI','Mon','degC'),
                         climdex.rx1day=c('rx1dayETCCDI','Mon','mm'),
+                        climdex.rx2day=c('rx2dayETCCDI','Mon','mm'),
                         climdex.rx5day=c('rx5dayETCCDI','Mon','mm'),
                         climdex.sdii=c('sdiiETCCDI','Ann','mm d-1'),
                         climdex.r10mm=c('r10mmETCCDI','Ann','days'),
@@ -98,7 +146,10 @@ get.climdex.info <- function(climdex.name) {
                         climdex.r99ptot=c('r99pETCCDI','Ann','mm'),
                         climdex.prcptot=c('prcptotETCCDI','Ann','mm'),
                         climdex.r95days=c('r95daysETCCDI','Ann','days'),
-                        climdex.r99days=c('r99daysETCCDI','Ann','days'))
+                        climdex.r99days=c('r99daysETCCDI','Ann','days'),
+                        climdex.r95store=c('r95storeETCCDI','Ann','days'),
+                        climdex.r99store=c('r99storeETCCDI','Ann','days'))
+
   rv <- climdex.names[[climdex.name]]
   return(rv)
 }
@@ -135,7 +186,7 @@ create.climdex.base.files <- function(climdex.name,gcm,rcm=NULL,scenario,type=NU
       
     } else {
 
-      files <- list.files(path=data.dir,pattern='pr_day',full.name=TRUE)
+      files <- list.files(path=data.dir,pattern='pr_gcm',full.name=TRUE)
 ##      files <- list.files(path=paste(data.dir,scenario,'/',gcm,'/',sep=''),pattern='pr_day',full.name=TRUE)
       past.file <- files[grep(past.int,files)]
 
@@ -300,21 +351,21 @@ climdex.for.model <- function(gcm,rcm=NULL,scenario,interval,type=NULL,
                               data.dir,write.dir) {
 
   if (is.null(rcm)) {
-    pr.files <- list.files(path=data.dir,pattern='pr_day',full.name=TRUE)
-    ##pr.files <- list.files(path=data.dir,pattern='pr_gcm_prism',full.name=TRUE)
+    ##pr.files <- list.files(path=data.dir,pattern='pr_day',full.name=TRUE)
+    pr.files <- list.files(path=data.dir,pattern='pr_gcm_prism',full.name=TRUE)
     pr.past.file <- pr.files[grep(past.int,pr.files)]
     pr.proj.file <- pr.files[grep(proj.int,pr.files)] 
 
     file.split <- strsplit(pr.past.file,'_')[[1]]
     run <- file.split[grep('r*i1p1',file.split)]
 
-    tasmax.files <- list.files(path=data.dir,pattern='tasmax_day',full.name=TRUE)
-    ##tasmax.files <- list.files(path=data.dir,pattern='tasmax_gcm_prism',full.name=TRUE)
+    ##tasmax.files <- list.files(path=data.dir,pattern='tasmax_day',full.name=TRUE)
+    tasmax.files <- list.files(path=data.dir,pattern='tasmax_gcm_prism',full.name=TRUE)
     tasmax.past.file <- tasmax.files[grep(past.int,tasmax.files)]
     tasmax.proj.file <- tasmax.files[grep(proj.int,tasmax.files)]  
 
-    tasmin.files <- list.files(path=data.dir,pattern='tasmin_day',full.name=TRUE)
-    ##tasmin.files <- list.files(path=data.dir,pattern='tasmin_gcm_prism',full.name=TRUE)
+    ##tasmin.files <- list.files(path=data.dir,pattern='tasmin_day',full.name=TRUE)
+    tasmin.files <- list.files(path=data.dir,pattern='tasmin_gcm_prism',full.name=TRUE)
     tasmin.past.file <- tasmin.files[grep(past.int,tasmin.files)]
     tasmin.proj.file <- tasmin.files[grep(proj.int,tasmin.files)]  
        
@@ -439,6 +490,7 @@ climdex.for.model <- function(gcm,rcm=NULL,scenario,interval,type=NULL,
 
       ##Parallel Version
       ##ptm <- proc.time()
+      if (1==1) {
       climdex.objects <- foreach(
                            tasmax=tasmax.list,
                            tasmin=tasmin.list,
@@ -450,7 +502,7 @@ climdex.for.model <- function(gcm,rcm=NULL,scenario,interval,type=NULL,
                          }
       ##print('Parallel Time')
       ##print(proc.time()-ptm)
-
+      }
       ##Previous Version
       ##mtm <- proc.time() 
       ##climdex.objects <- mapply(climdexInput.raw,tasmax.list,tasmin.list,pr.list,
@@ -458,7 +510,7 @@ climdex.for.model <- function(gcm,rcm=NULL,scenario,interval,type=NULL,
       ##                            base=as.numeric(strsplit(past.int,'-')[[1]])))
       ##print('Mapply time')
       ##print(proc.time()-mtm)    
-      ##browser()
+
 
       for (k in seq_along(climdex.names)) {
 ##        ptm <- proc.time()
@@ -479,7 +531,6 @@ climdex.for.model <- function(gcm,rcm=NULL,scenario,interval,type=NULL,
         ##print('Lapply time')
         ##print(proc.time()-ctm)    
         
-
         ncol <- length(climdex.values[[1]])
         climdex.matrix <- matrix(unlist(climdex.values),nrow=n.lat,ncol=ncol,byrow=TRUE)        
         ncvar_put(clim.ncs[[k]],varid=climdex.vars[k],vals=climdex.matrix,
@@ -530,6 +581,7 @@ climdex.for.model <- function(gcm,rcm=NULL,scenario,interval,type=NULL,
                      'climdex.csdi',
                      'climdex.dtr',
                      'climdex.rx1day',
+                     'climdex.rx2day',
                      'climdex.rx5day',
                      'climdex.sdii',
                      'climdex.r10mm',
@@ -551,17 +603,22 @@ climdex.for.model <- function(gcm,rcm=NULL,scenario,interval,type=NULL,
 #                     'climdex.r99ptot',
 #                     'climdex.prcptot')
 
-#  climdex.names <- c('climdex.fd')
+##CSIRO
+##  climdex.names <- c('climdex.cwd','climdex.id','climdex.r10mm','climdex.r99ptot',
+##                     'climdex.rx5day','climdex.tn90p','climdex.tr','climdex.txn','climdex.wsdi')
+##GFDL
+##    climdex.names <- c('climdex.dtr','climdex.id','climdex.tr')
+##HadGEM2-ES
+##    climdex.names <- c('climdex.prcptot','climdex.r95days','climdex.tnn','climdex.tr')
+##inmcm4
+##      climdex.names <- c('climdex.gsl','climdex.r99days','climdex.rx5day','climdex.tn90p','climdex.tx10p','climdex.txx')             
+##MIROC5
+##      climdex.names <- c('climdex.id','climdex.r20mm')  
+##MPI-ESM-LR
+##        climdex.names <- c('climdex.cwd','climdex.r10mm','climdex.r99ptot','climdex.tnn','climdex.txn')
+##HadGEM2-CC
+##        climdex.names <- c('climdex.cwd','climdex.sdii','climdex.su','climdex.tr','climdex.tx10p','climdex.wsdi')
 
-                   
-                   ##'climdex.sdii',
-                   ##'climdex.r10mm',
-                   ##'climdex.r20mm',
-                   ##'climdex.cdd',
-                   ##'climdex.cwd')
-
-
-##    climdex.names <- c('climdex.r95days','climdex.r99days')
 
 ##  data.dir <-  '/home/data/projects/rci/data/stat.downscaling/scaling_comparison/gcm/'
 ##  write.dir <- '/home/data/projects/rci/data/stat.downscaling/scaling_comparison/gcm/climdex/'
@@ -571,33 +628,19 @@ climdex.for.model <- function(gcm,rcm=NULL,scenario,interval,type=NULL,
 ## 
 ## 
 
-##gcm.list <- c('ACCESS1-0',
-##              'CanESM2',
-##              'CCSM4',
-##              'CNRM-CM5',
-##              'CSIRO-Mk3-6-0',
-##              'GFDL-ESM2G')
-
-gcm.list <- c('HadGEM2-CC',              
+gcm.list <- c('ACCESS1-0',
+              'CanESM2',
+              'CCSM4',
+              'CNRM-CM5',
+              'CSIRO-Mk3-6-0',
+              'GFDL-ESM2G',
+              'HadGEM2-CC',              
               'HadGEM2-ES',
               'inmcm4',
               'MIROC5',
               'MPI-ESM-LR', 
               'MRI-CGCM3')
 
-
-## 
-rcm.list <- list(c('CCSM','CRCM'),
-                 c('CCSM','MM5I'),
-                 c('CCSM','WRFG'),
-                 c('CGCM3','CRCM'),
-                 c('CGCM3','RCM3'),
-                 c('CGCM3','WRFG'),
-                 c('GFDL','ECP2'),
-                 c('GFDL','HRM3'),
-                 c('GFDL','RCM3'),
-                 c('HADCM3','HRM3'),
-                 c('HADCM3','MM5I'))
 
 ##**************************************************************************************
   
@@ -827,7 +870,6 @@ run.bccaq.raw <- function() {
                                 climdex.names,
                                 past.int,proj.int,new.int,
                                 tmp.dir,clim.dir)
-
     move.back <- paste("rsync -av ",clim.dir," ",write.dir,sep='')
     print(move.back)
     system(move.back)
@@ -852,16 +894,28 @@ run.bccaq.prism <- function() {
   proj.int <- '2001-2100'
   new.int <- '1951-2100'
   
-  data.dir <-  '/storage/data/scratch/ssobie/bccaq_gcm_south_island_subset/' ##Scenario is pasted in above
-  write.dir <- paste('/storage/data/scratch/ssobie/bccaq_gcm_south_island_subset/rcp85/climdex/',sep='')
+  data.dir <-  '/storage/data/climate/downscale/BCCAQ2+PRISM/high_res_downscaling/bccaq_gcm_van_whistler_subset/' ##Scenario is pasted in above
+  write.dir <- paste('/storage/data/climate/downscale/BCCAQ2+PRISM/high_res_downscaling/bccaq_gcm_van_whistler_subset/rcp85/climdex/',sep='')
 
-  tmp.base <- '/local_temp/ssobie/south_island/'
+  args <- commandArgs(trailingOnly=TRUE)
+  for(i in 1:length(args)){
+      eval(parse(text=args[[i]]))
+  }
+
+  tmp.base <- tmpdir ##'/local_temp/ssobie/van_whistler/'
+  gcm.list <- gcm
+
+  climdex.names <- c('climdex.r95store','climdex.r99store','climdex.rx2day')
 
   climdex.names <- sort(climdex.names)
   for (model in gcm.list) {
     gcm <- model
     print(gcm)
     tmp.dir <- paste(tmp.base,gcm,sep='')
+    if (!file.exists(tmp.dir)) {
+       dir.create(tmp.dir,recursive=T)
+    }
+
     clim.dir <- paste(tmp.base,scenario,'/climdex/',sep='')
     
     move.to <- paste("rsync -av ",data.dir,gcm,"/*gcm_prism* ",tmp.dir,sep='')
@@ -897,5 +951,4 @@ run.bccaq.prism <- function() {
 
 ##**************************************************************************************
 
-##run.bccaq.prism()
-run.bccaq.raw()
+run.bccaq.prism()
