@@ -163,8 +163,8 @@ if (cedar) {
    base.dir <- '/storage/data/climate/downscale/BCCAQ2+PRISM/high_res_downscaling/bccaq_gcm_bc_subset/'
 }
 
-data.dir <- paste0(base.dir,gcm,'/lat_split/')
-###data.dir <- paste0('/storage/data/climate/downscale/CMIP5_delivery/lat_split/')
+###data.dir <- paste0(base.dir,gcm,'/lat_split/')
+data.dir <- paste0('/storage/data/climate/downscale/CMIP5_delivery/',gcm,'/lat_split/')
 
 template.dir <- paste0(base.dir,gcm,'/template/',scenario,'/climdex/')
 template.file <- list.files(path=template.dir,pattern=paste0(varname,'ETCCDI'))
@@ -194,7 +194,7 @@ if (type=='annual') {
   print('Ann Avg opening')
   ann.name <- varname
   ann.dir <- paste0(tmp.dir,scenario,'/climdex/')
-  ann.file <- paste0(ann.dir,ann.name,'ETCCDI_ann_BCCAQ2-PRISM_',gcm,'_',scenario,'_',run,'_',interval,'.nc')
+  ann.file <- paste0(ann.dir,ann.name,'ETCCDI_ann_BCCAQ2_PRISM_',gcm,'_',scenario,'_',run,'_',interval,'.nc')
   ann.ncs <- nc_open(ann.file,write=TRUE)  
   common.lat <- ncvar_get(ann.ncs,'lat')
 }
@@ -205,7 +205,7 @@ if (type=='monthly') {
   print('Monthly avg opening')
   mon.name <- varname
   mon.dir <- paste0(tmp.dir,scenario,'/climdex/')
-  mon.file <- paste0(mon.dir,mon.name,'ETCCDI_mon_BCCAQ2-PRISM_',gcm,'_',scenario,'_',run,'_',interval,'.nc')
+  mon.file <- paste0(mon.dir,mon.name,'ETCCDI_mon_BCCAQ2_PRISM_',gcm,'_',scenario,'_',run,'_',interval,'.nc')
   mon.ncs <- nc_open(mon.file,write=TRUE)
   common.lat <- ncvar_get(mon.ncs,'lat')
 }
@@ -216,7 +216,7 @@ if (grepl('r9',varname)) {
   ann.names <- c(paste0(varname,'p'),paste0(varname,'days'),paste0(varname,'store'))
   ann.ncs <- vector(mode='list',length=length(ann.names))
   ann.dir <- paste0(tmp.dir,scenario,'/climdex/')
-  ann.files <- paste0(ann.dir,ann.names,'ETCCDI_ann_BCCAQ2-PRISM_',gcm,'_',scenario,'_',run,'_',interval,'.nc')
+  ann.files <- paste0(ann.dir,ann.names,'ETCCDI_ann_BCCAQ2_PRISM_',gcm,'_',scenario,'_',run,'_',interval,'.nc')
   for (d in seq_along(ann.names)) {
     ann.ncs[[d]] <- nc_open(ann.files[d],write=TRUE)  
   }

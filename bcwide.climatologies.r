@@ -87,7 +87,7 @@ if (1==1) {
 
 run.climdex.climatologies <- function(var.list,gcm,scenario='rcp85') {
 
-  intervals <- c('1971-2000','2011-2040','2041-2070','2071-2100')
+  intervals <- c('1971-2000','2011-2040','2041-2070','2071-2099')
 
   proj.dir <-  '/storage/data/climate/downscale/BCCAQ2+PRISM/high_res_downscaling/bccaq_gcm_bc_subset/'
 
@@ -114,23 +114,23 @@ run.climdex.climatologies <- function(var.list,gcm,scenario='rcp85') {
          seasonal.new <- gsub(pattern=pattern,replacement=seas.replacement,clim.file)
               
          for (interval in intervals) {     
-           write.month <- gsub(pattern='1951-2100',replacement=interval,month.new)
-###           sub.file <- sub.by.time(clim.file,interval=interval,read.dir,write.dir)
-###           system(paste('cdo -s -O ymonmean ',sub.file,' ',write.dir,write.month,sep=''))
-###           system(paste('rm ',sub.file,sep=''))         
+           write.month <- gsub(pattern='1951-2099',replacement=interval,month.new)
+           sub.file <- sub.by.time(clim.file,interval=interval,read.dir,write.dir)
+           system(paste('cdo -s -O ymonmean ',sub.file,' ',write.dir,write.month,sep=''))
+           system(paste('rm ',sub.file,sep=''))         
 
-           write.seas <- gsub(pattern='1951-2100',replacement=interval,seasonal.new)
+           write.seas <- gsub(pattern='1951-2099',replacement=interval,seasonal.new)
            sub.file <- sub.by.time(clim.file,interval=interval,read.dir,write.dir)
            system(paste('cdo -s -O seas',seas.fx,' ',sub.file,' ',write.dir,'tmp.nc',sep=''))
            system(paste('cdo -s -O yseasmean ',write.dir,'tmp.nc ',write.dir,write.seas,sep=''))
            system(paste('rm ',sub.file,sep=''))         
 
-           write.year <- gsub(pattern='1951-2100',replacement=interval,annual.new)
-###           sub.file <- sub.by.time(clim.file,interval=interval,read.dir,write.dir)
-###           system(paste('cdo -s -O year',seas.fx,' ',sub.file,' ',write.dir,'tmp.nc',sep=''))
-###           system(paste('cdo -s -O timmean ',write.dir,'tmp.nc ',write.dir,write.year,sep=''))
-###           system(paste('rm ',sub.file,sep=''))         
-###           system(paste('rm ',write.dir,'tmp.nc',sep=''))         
+           write.year <- gsub(pattern='1951-2099',replacement=interval,annual.new)
+           sub.file <- sub.by.time(clim.file,interval=interval,read.dir,write.dir)
+           system(paste('cdo -s -O year',seas.fx,' ',sub.file,' ',write.dir,'tmp.nc',sep=''))
+           system(paste('cdo -s -O timmean ',write.dir,'tmp.nc ',write.dir,write.year,sep=''))
+           system(paste('rm ',sub.file,sep=''))         
+           system(paste('rm ',write.dir,'tmp.nc',sep=''))         
          }
       } else {
          pattern <- paste0(var.name,'_ann')
@@ -138,7 +138,7 @@ run.climdex.climatologies <- function(var.list,gcm,scenario='rcp85') {
          annual.new <- gsub(pattern=pattern,replacement=replacement,clim.file)
              
          for (interval in intervals) {     
-           write.year <- gsub(pattern='1951-2100',replacement=interval,annual.new)
+           write.year <- gsub(pattern='1951-2099',replacement=interval,annual.new)
            sub.file <- sub.by.time(clim.file,interval=interval,read.dir,write.dir)
            system(paste('cdo -s -O timmean ',sub.file,' ',write.dir,write.year,sep=''))
            system(paste('rm ',sub.file,sep=''))         
@@ -150,7 +150,7 @@ run.climdex.climatologies <- function(var.list,gcm,scenario='rcp85') {
   
 run.standard.climatologies <- function(var.list,gcm,scenario='rcp85',type,grep.fx,clim.fx) {
 
-  intervals <- c('1971-2000','2011-2040','2041-2070','2071-2100')
+  intervals <- c('1971-2000','2011-2040','2041-2070','2071-2099')
 
   proj.dir <-  '/storage/data/climate/downscale/BCCAQ2+PRISM/high_res_downscaling/bccaq_gcm_bc_subset/'
 
@@ -163,7 +163,11 @@ run.standard.climatologies <- function(var.list,gcm,scenario='rcp85',type,grep.f
 
   for (var.name in var.list) {
       print(var.name)
-      grep.name <- grep.fx(var.name)
+      if (type=='annual_quantiles') {
+         grep.name <- grep.fx 
+      } else {
+        grep.name <- grep.fx(var.name)
+      }
       all.files <- list.files(path=read.dir,pattern=paste0(var.name,'_',grep.name))
       mon.file <- all.files[grep(scenario,all.files)]
 
@@ -175,10 +179,11 @@ run.standard.climatologies <- function(var.list,gcm,scenario='rcp85',type,grep.f
       file.new <- gsub(pattern=pattern,replacement=replacement,mon.file)
      
     for (interval in intervals) {     
-      write.new <- gsub(pattern='1951-2100',replacement=interval,file.new)
+      write.new <- gsub(pattern='1951-2099',replacement=interval,file.new)
       sub.file <- sub.by.time(mon.file,interval=interval,read.dir,write.dir)
       system(paste('cdo -s -O ',clim.fx,' ',sub.file,' ',write.dir,write.new,sep=''))
       system(paste('rm ',sub.file,sep=''))         
+
     }
   } 
 }
@@ -213,44 +218,81 @@ grep.mon <- function(var.name) {return('monthly')}
 grep.dd <-  function(var.name) {return('annual')}
 
 ##************************************************************************
-gcm <- 'MRI-CGCM3'
+
+##gcm <- 'ACCESS1-0'
 scenario <- 'rcp85'
+type <- 'annual_quantiles'
+
+##  args <- commandArgs(trailingOnly=TRUE)
+##  for(i in 1:length(args)){
+##      eval(parse(text=args[[i]]))
+##  }
+
 
 ##Annual
-run.annual.climatologies(gcm,scenario)
-
+if (type=='annual') {
+  run.annual.climatologies(gcm,scenario)
+}
 ##-----------------------------------------
-var.list <- c('pr','tasmax','tasmin')
 ##Extreme Values
-run.standard.climatologies(var.list,gcm,scenario='rcp85',type='annual_extremes',
-                           grep.fx=grep.ext,clim.fx='timmean')
+if (type=='annual_extremes') {
+  var.list <- c('pr','tasmax','tasmin')
+  run.standard.climatologies(var.list,gcm,scenario='rcp85',type='annual_extremes',
+                             grep.fx=grep.ext,clim.fx='timmean')
+}
 
 ##Monthly
-run.standard.climatologies(var.list,gcm,scenario='rcp85',type='monthly',
-                           grep.fx=grep.mon,clim.fx='ymonmean')
-
+if (type=='monthly') {
+  var.list <- c('pr','tasmax','tasmin')
+  run.standard.climatologies(var.list,gcm,scenario='rcp85',type='monthly',
+                             grep.fx=grep.mon,clim.fx='ymonmean')
+}
 ##Seasonal
-run.standard.climatologies(var.list,gcm,scenario='rcp85',type='seasonal',
-                           grep.fx=grep.seas,clim.fx='yseasmean')
+if (type=='seasonal') {
+  var.list <- c('pr','tasmax','tasmin')
+  run.standard.climatologies(var.list,gcm,scenario='rcp85',type='seasonal',
+                             grep.fx=grep.seas,clim.fx='yseasmean')
+}
 
 ##------------------------------------------
 ##Degree Days
-var.list <- c('cdd','fdd','gdd','hdd')
-run.standard.climatologies(var.list,gcm,scenario='rcp85',type='degree_days',
-                           grep.fx=grep.dd,clim.fx='timmean')
-
+if (type=='degree_days') {
+  var.list <- c('cdd','fdd','gdd','hdd')
+  run.standard.climatologies(var.list,gcm,scenario='rcp85',type='degree_days',
+                             grep.fx=grep.dd,clim.fx='timmean')
+}
 ##------------------------------------------
 ##Climdex              
-climdex.names <- c('gslETCCDI','fdETCCDI','suETCCDI','su30ETCCDI','idETCCDI','trETCCDI',
-                   'rx1dayETCCDI','rx2dayETCCDI', 'rx5dayETCCDI',
-                   'txxETCCDI','tnxETCCDI','txnETCCDI', 'tnnETCCDI',                   
-                   'sdiiETCCDI','r10mmETCCDI','r20mmETCCDI','cddETCCDI','cwdETCCDI',
-                   'r95pETCCDI','r99pETCCDI','prcptotETCCDI','r95daysETCCDI','r99daysETCCDI',
-                   'dtrETCCDI')
-climdex.names <- c('rx1dayETCCDI','rx2dayETCCDI', 'rx5dayETCCDI',
-                   'txxETCCDI','tnxETCCDI','txnETCCDI', 'tnnETCCDI',                   
-                   'dtrETCCDI')
+if (type=='climdex') {
+###'sdiiETCCDI','trETCCDI',
+
+##  climdex.names <- c('gslETCCDI','fdETCCDI','suETCCDI','su30ETCCDI','idETCCDI',
+##                     'rx1dayETCCDI','rx2dayETCCDI', 'rx5dayETCCDI',
+##                     'txxETCCDI','tnxETCCDI','txnETCCDI','tnnETCCDI',                    
+##                     'r10mmETCCDI','r20mmETCCDI','cddETCCDI','cwdETCCDI',
+##                     'r95pETCCDI','r99pETCCDI','prcptotETCCDI','r95daysETCCDI','r99daysETCCDI',
+##                     'dtrETCCDI')
+climdex.names <- c('r95daysETCCDI')
+
 ##gcms <- c('ACCESS1-0','CanESM2','CCSM4','CSIRO-Mk3-6-0','CNRM-CM5','inmcm4')
 ##for (gcm in gcms) {
-##  run.climdex.climatologies(climdex.names,gcm,scenario='rcp85')
+    run.climdex.climatologies(climdex.names,gcm,scenario='rcp85')
 ##}
+
+}
+
+##------------------------------------------
+##Annual Quantiles
+if (type=='annual_quantiles') {
+  gcms <- c('ACCESS1-0','CanESM2','CNRM-CM5','CSIRO-Mk3-6-0','GFDL-ESM2G','inmcm4','MRI-CGCM3',
+            'MIROC5','MPI-ESM-LR','CCSM4')
+  gcms <- c('HadGEM2-CC','HadGEM2-ES')
+  for (gcm in gcms) {
+    run.standard.climatologies('tasmax',gcm,scenario='rcp85',type='annual_quantiles',grep.fx='annual_quantile_975',clim.fx='timmean')
+    run.standard.climatologies('tasmax',gcm,scenario='rcp85',type='annual_quantiles',grep.fx='annual_quantile_990',clim.fx='timmean')
+    run.standard.climatologies('tasmax',gcm,scenario='rcp85',type='annual_quantiles',grep.fx='annual_quantile_996',clim.fx='timmean')
+    run.standard.climatologies('tasmin',gcm,scenario='rcp85',type='annual_quantiles',grep.fx='annual_quantile_004',clim.fx='timmean')
+    run.standard.climatologies('tasmin',gcm,scenario='rcp85',type='annual_quantiles',grep.fx='annual_quantile_010',clim.fx='timmean')
+    run.standard.climatologies('tasmin',gcm,scenario='rcp85',type='annual_quantiles',grep.fx='annual_quantile_025',clim.fx='timmean')
+  }
+}

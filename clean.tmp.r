@@ -1,6 +1,6 @@
 ##Script to clean up temporary directories
 
-tmp.dir <- '/local_temp/ssobie/BCCAQ2/'
+tmp.dir <- '/local_temp/ssobie/'
 
 
 print(list.files(path=tmp.dir,recursive=T))

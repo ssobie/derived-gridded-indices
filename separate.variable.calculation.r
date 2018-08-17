@@ -219,8 +219,10 @@ if (cedar) {
    base.dir <- '/storage/data/climate/downscale/BCCAQ2+PRISM/high_res_downscaling/bccaq_gcm_bc_subset/'
 }
 
-data.dir <- paste0(base.dir,gcm,'/lat_split/')
-##data.dir <- paste0('/storage/data/climate/downscale/CMIP5_delivery/lat_split/')
+##data.dir <- paste0(base.dir,gcm,'/lat_split/')
+
+data.dir <- paste0('/storage/data/climate/downscale/CMIP5_delivery/',gcm,'/lat_split/')
+print(paste0('Data dir ',data.dir))
 
 template.dir <- paste0(base.dir,gcm,'/template/',scenario,'/',type,'/')
 template.file <- list.files(path=template.dir,pattern=varname)
@@ -316,7 +318,7 @@ for (i in 1:len) {
   data.input <- paste0(varname,'_gcm_prism_BCCAQ2_',gcm,'_',scenario,'_',run,'_',interval,'_',lat.interval,'.nc')
   print(paste0('Copy ',data.input))
   file.copy(paste0(data.dir,"/",data.input),tmp.dir,overwrite=TRUE)
-
+  
   print('Data opening')
   input.file <- paste0(varname,'_gcm_prism_BCCAQ2_',gcm,'_',scenario,'_',run,'_',interval,'_',lat.interval,'.nc')
   input.nc <- nc_open(paste0(tmp.dir,input.file),write=FALSE)
@@ -445,11 +447,11 @@ if (type=='annual_quantiles') {
 
 clean.up <- paste("rm ",tmp.dir,scenario,"/",type,"/*",sep='')
 print(clean.up)
-##system(clean.up)
+system(clean.up)
 
 clean.up <- paste("rmdir ",tmp.dir,scenario,"/",type,sep='')
 print(clean.up)
-##system(clean.up)
+system(clean.up)
 
 print("Total Elapsed Time:")
 print(proc.time()-ptm)
