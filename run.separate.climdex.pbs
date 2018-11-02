@@ -6,7 +6,7 @@
 #PBS -o /storage/home/ssobie/code/repos/derived_gridded_indices/climdex.stdout.log
 #PBS -e /storage/home/ssobie/code/repos/derived_gridded_indices/climdex.stderr.log 
 
-interval='1951-2100'
+interval='1951-2099'
 ##gcm='CNRM-CM5'
 ##run='r1i1p1'
 ##scenario='rcp85'

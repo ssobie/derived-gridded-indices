@@ -1,5 +1,5 @@
 #!/bin/bash
-#PBS -l nodes=cheetah.compute.pcic.uvic.ca:ppn=1
+#PBS -l nodes=worker-2.compute.pcic.uvic.ca:ppn=1
 #PBS -l pmem=1000mb
 #PBS -l walltime=01:00:00
 #PBS -d /storage/home/ssobie/code/repos/derived_gridded_indices/
@@ -15,5 +15,5 @@ module load netcdf-bin
 module load cdo-bin
 module load nco-bin
 
-nohup R CMD BATCH --no-save --no-restore "--args tmpdir='/local_temp/ssobie/prism/'" clean.tmp.r "./clean.out"
+nohup R CMD BATCH --no-save --no-restore "--args tmpdir='/local_temp/ssobie/crcm5/'" clean.tmp.r "./clean.out"
 

@@ -3,15 +3,12 @@
 #PBS -l pmem=12000mb
 #PBS -l walltime=78:00:00
 #PBS -d /storage/home/ssobie/code/repos/derived_gridded_indices/
-#PBS -o /storage/home/ssobie/code/repos/derived_gridded_indices/dtr.stdout.log
-#PBS -e /storage/home/ssobie/code/repos/derived_gridded_indices/dtr.stderr.log 
-#PBS -N dtr.cnrm
+#PBS -o /storage/home/ssobie/code/repos/derived_gridded_indices/dd.stdout.log
+#PBS -e /storage/home/ssobie/code/repos/derived_gridded_indices/dd.stderr.log 
 
 interval='1951-2100'
-gcm='CNRM-CM5'
 scenario='rcp85'
 run='r1i1p1'
-type='dtr'
 varname='tas'
 
 cd /storage/home/ssobie/code/repos/derived_gridded_indices/

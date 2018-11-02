@@ -1,0 +1,25 @@
+#!/bin/bash
+#PBS -l nodes=grinder-1.compute.pcic.uvic.ca:ppn=1
+#PBS -l pmem=10000mb
+#PBS -l walltime=12:00:00
+#PBS -d /storage/home/ssobie/code/repos/derived_gridded_indices/
+#PBS -o /storage/home/ssobie/code/repos/derived_gridded_indices/anoms.stdout.log
+#PBS -e /storage/home/ssobie/code/repos/derived_gridded_indices/anoms.stderr.log 
+
+##gcm='inmcm4'
+##scenario='rcp85'
+##varname='pr'
+
+uname=`whoami`
+TEMPDIRECTORY="/local_temp/$uname/prism"
+
+cd /storage/home/ssobie/code/repos/derived_gridded_indices/
+echo "Current working directory is `pwd`"
+
+module load R/3.2.5
+module load netcdf-bin
+module load cdo-bin
+module load nco-bin
+
+nohup R CMD BATCH "--args tmpdir='$TEMPDIRECTORY' gcm='$gcm' scenario='$scenario' varname='$varname'" calculate.anomalies.r "./${gcm}.${scenario}.${varname}.anomalies.out"
+

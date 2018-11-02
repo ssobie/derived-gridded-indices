@@ -6,8 +6,6 @@
 #PBS -o /storage/home/ssobie/code/repos/derived_gridded_indices/sep.stdout.log
 #PBS -e /storage/home/ssobie/code/repos/derived_gridded_indices/sep.stderr.log 
 
-interval='1951-2099'
-
 cd /storage/home/ssobie/code/repos/derived_gridded_indices/
 echo "Current working directory is `pwd`"
 
@@ -16,5 +14,5 @@ module load netcdf-bin
 module load cdo-bin
 module load nco-bin
 
-nohup R CMD BATCH --no-save --no-restore "--args tmpdir='/local_temp/ssobie/prism/' gcm='$gcm' scenario='$scenario' run='$run' interval='$interval' type='$type' varname='$varname' pctl='$pctl'" separate.variable.calculation.r "./${gcm}.${scenario}.${run}.${type}.${varname}.${pctl}.out"
+nohup R CMD BATCH --no-save --no-restore "--args tmpdir='/local_temp/ssobie/clim/' gcm='$gcm' scenario='$scenario' type='$type'" bcwide.climatologies.r "./${gcm}.${scenario}.${type}.clim.out"
 

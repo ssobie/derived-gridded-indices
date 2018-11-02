@@ -41,7 +41,7 @@ run.annual.climatologies <- function(gcm,scenario) {
 
   ##-----------------------------------------------------------------------------
   ##Precipitation     
-if (1==1) {
+if (1==0) {
   all.files <- list.files(path=read.dir,pattern='pr_annual_total')
   ann.file <- all.files[grep(scenario,all.files)]
 
@@ -58,7 +58,7 @@ if (1==1) {
        system(paste('cdo -s -O timstd ',sub.file,' ',write.dir,gsub(pattern='1951-2100',replacement=interval,sd.file),sep=''))
      system(paste('rm ',sub.file,sep=''))         
   }
-}
+
   ##------------------------------------------------------------------------------
   ##Maximum Temperature
   all.files <- list.files(path=read.dir,pattern='tasmax_annual_average')
@@ -82,6 +82,64 @@ if (1==1) {
        sub.file <- sub.by.time(ann.file,interval=interval,read.dir,write.dir)
        system(paste('cdo -s -O timmean ',sub.file,' ',write.dir,gsub(pattern='1951-2100',replacement=interval,avg.file),sep=''))
      system(paste('rm ',sub.file,sep=''))         
+  }    
+}
+  ##------------------------------------------------------------------------------
+  ##Average Temperature
+  all.tasmax.files <- list.files(path=write.dir,pattern='tasmax_average_annual_climatology')
+  tasmax.files <- all.tasmax.files[grep(scenario,all.tasmax.files)]
+  all.tasmin.files <- list.files(path=write.dir,pattern='tasmin_average_annual_climatology')
+  tasmin.files <- all.tasmin.files[grep(scenario,all.tasmin.files)]
+
+  for (interval in intervals) {        
+       tasmax.file <- tasmax.files[grep(interval,tasmax.files)]
+       tasmin.file <- tasmin.files[grep(interval,tasmin.files)]
+       print(paste0('tas ',interval))
+       tas.file <- gsub(pattern='tasmax',replacement='tas',tasmax.file)  
+       print(tas.file)
+       system(paste0('cdo -s -O add ',write.dir,tasmax.file,' ',write.dir,tasmin.file,' ',write.dir,'sub.nc'))
+       system(paste0('cdo -s -O divc,2 ',write.dir,'sub.nc ',write.dir,tas.file))
+       system(paste('rm ',write.dir,'sub.nc',sep=''))         
+       system(paste0('ncrename -v tasmax,tas ',write.dir,tas.file))
+
+  }    
+
+}
+
+run.seas.mon.temperature <- function(type,scenario='rcp85') {
+  ##------------------------------------------------------------------------------
+  intervals <- c('1971-2000','2011-2040','2041-2070','2071-2100')
+  gcms <- c('ACCESS1-0','CanESM2','CNRM-CM5','CSIRO-Mk3-6-0','GFDL-ESM2G','HadGEM2-CC',
+            'HadGEM2-ES','inmcm4','MRI-CGCM3','MIROC5','MPI-ESM-LR','CCSM4')
+
+  proj.dir <-  '/storage/data/climate/downscale/BCCAQ2+PRISM/high_res_downscaling/bccaq_gcm_bc_subset/'
+
+  for (gcm in gcms) {
+    print(gcm)
+    read.dir <- paste(proj.dir,gcm,'/',scenario,'/',type,'/',sep='')
+    write.dir  <- paste0(read.dir,'climatologies/')
+    if (!file.exists(write.dir)) {
+        dir.create(write.dir,recursive=T)
+    }
+  
+    ##Average Temperature
+    all.tasmax.files <- list.files(path=write.dir,pattern=paste0('tasmax_',type,'_average_climatology'))
+    tasmax.files <- all.tasmax.files[grep(scenario,all.tasmax.files)]
+    all.tasmin.files <- list.files(path=write.dir,pattern=paste0('tasmin_',type,'_average_climatology'))
+    tasmin.files <- all.tasmin.files[grep(scenario,all.tasmin.files)]
+
+    for (interval in intervals) {        
+       tasmax.file <- tasmax.files[grep(interval,tasmax.files)]
+       tasmin.file <- tasmin.files[grep(interval,tasmin.files)]
+       print(paste0('tas ',interval))
+       tas.file <- gsub(pattern='tasmax',replacement='tas',tasmax.file)  
+       print(tas.file)
+
+       system(paste0('cdo -s -O add ',write.dir,tasmax.file,' ',write.dir,tasmin.file,' ',write.dir,'sub.nc'))
+       system(paste0('cdo -s -O divc,2 ',write.dir,'sub.nc ',write.dir,tas.file))
+       system(paste('rm ',write.dir,'sub.nc',sep=''))         
+       system(paste0('ncrename -v tasmax,tas ',write.dir,tas.file))
+    }
   }    
 }
 
@@ -147,6 +205,38 @@ run.climdex.climatologies <- function(var.list,gcm,scenario='rcp85') {
   } 
 }
 
+run.drought.climatologies <- function(gcm,scenario) {
+
+  intervals <- c('1971-2000','2011-2040','2041-2070','2071-2100')
+
+  proj.dir <-  '/storage/data/climate/downscale/BCCAQ2+PRISM/high_res_downscaling/bccaq_gcm_bc_subset/'
+
+  print(gcm)
+  read.dir <- paste(proj.dir,gcm,'/',scenario,'/climdex/',sep='')
+  write.dir  <- paste0(read.dir,'climatologies/')
+  if (!file.exists(write.dir)) {
+     dir.create(write.dir,recursive=T)
+  }
+
+  ##-----------------------------------------------------------------------------
+  ##Precipitation     
+  clim.files <- list.files(path=read.dir,pattern='cddETCCDI')
+  clim.file <- clim.files[grep(scenario,clim.files)]
+
+  cdd.30.file <- gsub(pattern='cddETCCDI',replacement='cdd30ETCCDI_annual_climatology',clim.file)  
+  cdd.90.file <- gsub(pattern='cddETCCDI',replacement='cdd90ETCCDI_annual_climatology',clim.file)  
+  cdd.max.file <- gsub(pattern='cddETCCDI',replacement='cddmaxETCCDI_annual_climatology',clim.file)  
+
+  for (interval in intervals) {        
+     print(paste0('cdd ',interval))
+     sub.file <- sub.by.time(clim.file,interval=interval,read.dir,write.dir)
+     system(paste('cdo -s -O timsum -gec,30 ',sub.file,' ',write.dir,gsub(pattern='1951-2100',replacement=interval,cdd.30.file),sep=''))
+##     system(paste('cdo -s -O timmax ',sub.file,' ',write.dir,gsub(pattern='1951-2099',replacement=interval,cdd.max.file),sep=''))
+##     system(paste('cdo -s -O timpctl,90 ',sub.file,' -timmin ',sub.file,' -timmax ',sub.file,' ',
+##                   write.dir,gsub(pattern='1951-2099',replacement=interval,cdd.90.file),sep=''))
+     system(paste('rm ',sub.file,sep=''))         
+  }
+}
   
 run.standard.climatologies <- function(var.list,gcm,scenario='rcp85',type,grep.fx,clim.fx) {
 
@@ -219,16 +309,17 @@ grep.dd <-  function(var.name) {return('annual')}
 
 ##************************************************************************
 
-##gcm <- 'ACCESS1-0'
+gcm <- 'MRI-CGCM3'
 scenario <- 'rcp85'
-type <- 'annual_quantiles'
+type <- 'monthly'
 
 ##  args <- commandArgs(trailingOnly=TRUE)
 ##  for(i in 1:length(args)){
 ##      eval(parse(text=args[[i]]))
 ##  }
 
-
+run.seas.mon.temperature(type,scenario)
+browser()
 ##Annual
 if (type=='annual') {
   run.annual.climatologies(gcm,scenario)
@@ -279,6 +370,17 @@ climdex.names <- c('r95daysETCCDI')
     run.climdex.climatologies(climdex.names,gcm,scenario='rcp85')
 ##}
 
+}
+
+##------------------------------------------
+##CDD Drought
+if (type=='drought') {
+  gcms <- c('ACCESS1-0','CanESM2','CNRM-CM5','CSIRO-Mk3-6-0','GFDL-ESM2G','HadGEM2-CC',
+            'HadGEM2-ES','inmcm4','MRI-CGCM3','MIROC5','MPI-ESM-LR','CCSM4')
+ ## gcms <- c('HadGEM2-CC','HadGEM2-ES')
+  for (gcm in gcms) {
+      run.drought.climatologies(gcm,scenario='rcp85')
+  }
 }
 
 ##------------------------------------------

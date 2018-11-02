@@ -1,0 +1,16 @@
+#!/bin/bash
+#PBS -l nodes=1:ppn=4
+#PBS -l pmem=10000mb                                                                                                      
+#PBS -l walltime=72:00:00
+#PBS -d /storage/home/ssobie/code/repos/derived_gridded_indices/
+#PBS -o /storage/home/ssobie/code/repos/derived_gridded_indices/mons.stdout.log
+#PBS -e /storage/home/ssobie/code/repos/derived_gridded_indices/mons.stderr.log
+
+cd /storage/home/ssobie/code/repos/derived_gridded_indices/
+echo "Current working directory is `pwd`"
+
+module load R/3.2.5
+module load netcdf-bin
+module load gdal/2.0.1
+
+nohup R CMD BATCH "--args tmpdir='/local_temp/ssobie/monthly' region='$region' area='$area' varname='$varname'" monthly.regional.series.r "./${region}.${varname}.mons.out"

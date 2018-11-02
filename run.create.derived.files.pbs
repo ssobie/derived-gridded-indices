@@ -3,13 +3,14 @@
 #PBS -l pmem=10000mb
 #PBS -l walltime=24:00:00
 #PBS -d /storage/home/ssobie/code/repos/derived_gridded_indices/
-#PBS -o /storage/home/ssobie/code/repos/derived_gridded_indices/cnr.derived.stdout.log
-#PBS -e /storage/home/ssobie/code/repos/derived_gridded_indices/cnr.derived.stderr.log 
-#PBS -N cnr_derv
+#PBS -o /storage/home/ssobie/code/repos/derived_gridded_indices/derived.stdout.log
+#PBS -e /storage/home/ssobie/code/repos/derived_gridded_indices/derived.stderr.log 
+#PBS -N hcc
 
-gcm='CNRM-CM5'
-scenario='rcp85'
+gcm="HadGEM2-CC"
 run='r1i1p1'
+scenario='rcp85'
+
 
 cd /storage/home/ssobie/code/repos/derived_gridded_indices/
 echo "Current working directory is `pwd`"
