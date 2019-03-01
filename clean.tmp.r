@@ -2,7 +2,6 @@
 
 tmp.dir <- '/local_temp/ssobie/'
 
-
 print(list.files(path=tmp.dir,recursive=T))
 
 clean.up <- list.files(path=tmp.dir,recursive=T,full.name=T)

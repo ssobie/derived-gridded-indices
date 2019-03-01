@@ -58,12 +58,12 @@ calc.return.periods <- function(data,yearly.fac,var.name,rperiod) {
 
 make.new.netcdf.file <- function(gcm,rcm=NULL,scenario,var.name,rperiod,
                                  var.file,write.file,
-                                 data.dir,write.dir) {
+                                 data.dir) {
 
   rp.name <- paste('rp.',rperiod,sep='')
 
   ##--------------------------------------------------------------
-  nc <- nc_open(var.file,write=FALSE)
+  nc <- nc_open(paste0(data.dir,var.file),write=FALSE)
   
   time.atts <- ncatt_get(nc,'time')
   time.calendar <- time.atts$calendar
@@ -98,13 +98,13 @@ make.new.netcdf.file <- function(gcm,rcm=NULL,scenario,var.name,rperiod,
   var.geog <- ncvar_def(rp.name, units=var.atts$units, dim=list(x.geog, y.geog, t.geog),
                         missval=var.atts[['_FillValue']])
   
-  hist.nc <- nc_create(paste(write.dir,write.file,sep=''), var.geog)
+  hist.nc <- nc_create(paste(data.dir,'return_periods/',write.file,sep=''), var.geog)
   
   ##Loop over subsets of the time series
   ##Past file first
-  global.names <- names(global.atts)
-  for (g in 1:length(global.atts)) 
-    ncatt_put(hist.nc,varid=0,attname=global.names[g],attval=global.atts[[g]])
+  ##global.names <- names(global.atts)
+  ##for (g in 1:length(global.atts)) 
+  ##  ncatt_put(hist.nc,varid=0,attname=global.names[g],attval=global.atts[[g]])
 
   ##Time attributes
   ncatt_put(hist.nc,varid='time',attname='units',attval=time.units)
@@ -126,7 +126,7 @@ make.new.netcdf.file <- function(gcm,rcm=NULL,scenario,var.name,rperiod,
     ncatt_put(hist.nc,varid=rp.name,attname=var.names[j],attval=var.atts[[j]])
 
   var.units <- ncatt_get(nc,var.name,'units')$value
-  ncatt_put(hist.nc,varid=rp.name,attname='units',attval='kg m-2 d-1')
+  ncatt_put(hist.nc,varid=rp.name,attname='units',attval=var.units)
   
   nc_close(hist.nc)  
   nc_close(nc)  
@@ -165,13 +165,13 @@ check.rp.outliers <- function(data,var.name) {
 
 rp.for.model <- function(gcm,rcm=NULL,scenario,var.name,rperiod,
                          var.file,write.file,
-                         data.dir,write.dir,
+                         data.dir,
                          interval=NULL,canada=FALSE) {
 
   rp.name <- paste('rp.',rperiod,sep='')  
 
-  nc <- nc_open(paste(write.dir,write.file,sep=''),write=TRUE)
-  hist.nc <- nc_open(var.file,write=FALSE)
+  nc <- nc_open(paste(data.dir,'return_periods/',write.file,sep=''),write=TRUE)
+  hist.nc <- nc_open(paste0(data.dir,var.file),write=FALSE)
   var.units <- ncatt_get(hist.nc,var.name,'units')$value
   print(var.units)    
   lon <- ncvar_get(nc,'lon')
@@ -191,7 +191,7 @@ rp.for.model <- function(gcm,rcm=NULL,scenario,var.name,rperiod,
   st <- 1
   en <- length(var.dates)
 
-  if (canada) {
+  if (!is.null(interval)) {
     yr.bnds <- strsplit(interval,'-')[[1]]
     st <- grep(yr.bnds[1],var.dates)[1]
     en <- tail(grep(yr.bnds[2],var.dates),1)    
@@ -219,9 +219,9 @@ rp.for.model <- function(gcm,rcm=NULL,scenario,var.name,rperiod,
         var.list <- lapply(var.list,ud.convert,var.units,'kg m-2 d-1')
 
       rp.values <- lapply(var.list,calc.return.periods,yearly.fac,var.name=var.name,rperiod)      
-      print(max(unlist(rp.values),na.rm=T))
+      ##print(max(unlist(rp.values),na.rm=T))
       rp.checked <- lapply(rp.values,check.rp.outliers,var.name)
-      print(rp.checked)
+      ##print(rp.checked)
 
       ncvar_put(nc,varid=rp.name,vals=rp.checked,
                    start=c(i,1,1),count=c(1,n.lat,1))            
@@ -255,12 +255,6 @@ gcm.list <- c('ACCESS1-0',
               'MIROC5',
               'MPI-ESM-LR',
               'MRI-CGCM3')
-
-gcm.list <- c('inmcm4',
-              'MIROC5',
-              'MPI-ESM-LR',
-              'MRI-CGCM3')
-
 
 ###--------------------------------------------------------------------
 
@@ -299,7 +293,7 @@ run.bccaq.gcms.rp <- function() {
     print('made new file')
     test <- rp.for.model(gcm,rcm,scenario,var.name,rperiod,
                          var.past.file,write.hist.name,
-                         data.dir,write.dir)
+                         data.dir,write.dir,past.int)
     } 
     if (1==0) {
     ##-------------------------------------------------
@@ -833,13 +827,88 @@ run.anusplin.rp <- function() {
 
 }
 
+##----------------------------------------------------------------------
+
+run.mbc.rp <- function() {
+ 
+  var.name <- 'tasmax'
+  scenario <- 'rcp85'
+  past.int <- '1951-2000'
+  proj.int <- '2051-2100'
+  rperiod <- '10'
+
+  tmp.base <- '/local_temp/ssobie/rps/'
+  data.dir <- '/storage/data/climate/downscale/BCCAQ2+PRISM/mvbc/bccaq2/'
+  ##data.dir <- '/storage/data/climate/downscale/BCCAQ2+PRISM/mvbc/'
+
+  
+  for (model in gcm.list) {
+    print(model)
+    gcm <- model[1]
+    rcm <- NULL
+    rp.dir <- paste0('/storage/data/climate/downscale/BCCAQ2+PRISM/mvbc/bccaq2/return_periods/',gcm,'/')
+    ##rp.dir <- paste0('/storage/data/climate/downscale/BCCAQ2+PRISM/mvbc/twenty/return_periods/',gcm,'/')
+    ##rp.dir <- '/storage/data/climate/downscale/BCCAQ2+PRISM/mvbc/'
+    if (!file.exists(rp.dir))
+       dir.create(rp.dir,recursive=T)
+
+    tmp.dir <- paste(tmp.base,gcm,'/',sep='')  
+    if (!file.exists(tmp.dir)) {
+      dir.create(tmp.dir,recursive=TRUE)
+      dir.create(paste0(tmp.dir,'return_periods/'),recursive=TRUE)
+    }    
+    var.file <- list.files(path=data.dir,pattern=paste0(var.name,'_tps_coast_subset_',gcm))
+    ##var.file <- list.files(path=data.dir,pattern=paste0(var.name,'_BCCAQ2_',gcm))
+    ##var.file <- 'tasmin.tps.nc'
+    file.copy(from=paste0(data.dir,var.file),to=tmp.dir,overwrite=T)
+
+    ##-------------------------------------------------    
+    ##var.past.file <- var.files[grep(past.int,var.files)]
+    run <- 'r1' ## strsplit(var.past.file,'_')[[1]][9]
+
+    write.hist.name <- paste(var.name,'_RP',rperiod,'_BCCAQ_GCM_',gcm,'_',scenario,'_',run,'_',past.int,'.nc',sep='')
+    ##write.hist.name <- paste(var.name,'_RP',rperiod,'_MBC_GCM_',gcm,'_',scenario,'_',run,'_',past.int,'.nc',sep='')
+
+    if (1==1) {
+    make.new.netcdf.file(gcm,rcm,scenario,var.name,rperiod,
+                         var.file,write.hist.name,
+                         tmp.dir)
+    print('made new file')
+    test <- rp.for.model(gcm,rcm,scenario,var.name,rperiod,
+                         var.file,write.hist.name,
+                         tmp.dir,past.int)
+    file.copy(from=paste0(tmp.dir,'return_periods/',write.hist.name),to=rp.dir,overwrite=TRUE)
+    } 
+
+    if (1==1) {
+    ##-------------------------------------------------
+    ##var.proj.file <- var.files[grep(proj.int,var.files)]
+    write.proj.name <- paste(var.name,'_RP',rperiod,'_BCCAQ_GCM_',gcm,'_',scenario,'_',run,'_',proj.int,'.nc',sep='')
+    ##write.proj.name <- paste(var.name,'_RP',rperiod,'_MBC_GCM_',gcm,'_',scenario,'_',run,'_',proj.int,'.nc',sep='')
+   
+    make.new.netcdf.file(gcm,rcm,scenario,var.name,rperiod,
+                         var.file,write.proj.name,
+                         tmp.dir)
+    print('made new file')
+    test <- rp.for.model(gcm,rcm,scenario,var.name,rperiod,
+                         var.file,write.proj.name,
+                         tmp.dir,proj.int)
+    file.copy(from=paste0(tmp.dir,'return_periods/',write.proj.name),to=rp.dir,overwrite=TRUE)
+  }
+
+  file.remove(paste0(tmp.dir,var.file))
+  }
+ 
+}
+
 
 ##-------------------------------------------------------------------------
 
 ##Rprof('rp.bccaq.gcms.profile.out')
 #run.bccaq.gcms.rp()
-run.country.bccaq.gcms.rp()
+##run.country.bccaq.gcms.rp()
 ##run.bccaq.rcms.agg.scales.rp()
 ##run.rcms.rp()
 ##Rprof(NULL)
 
+run.mbc.rp()

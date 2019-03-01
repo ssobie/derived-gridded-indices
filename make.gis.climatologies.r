@@ -27,7 +27,14 @@ make.netcdf.file <- function(file.name,var.name,clim.data) {
 create.ensemble.annual.climatologies <- function(var.name,type,season,interval,gcm.list,region) {
 
   scenario <- 'rcp85'
-  proj.dir <-   paste0('/storage/data/climate/downscale/BCCAQ2+PRISM/high_res_downscaling/assessment_subsets/',region,'/')
+ 
+  if (region == 'bc') {
+    proj.dir <-   '/storage/data/climate/downscale/BCCAQ2+PRISM/high_res_downscaling/bccaq_gcm_bc_subset/' ##For BC
+  } else {
+    proj.dir <-   paste0('/storage/data/climate/downscale/BCCAQ2+PRISM/high_res_downscaling/assessment_subsets/',region,'/')
+    ##proj.dir <-   paste0('/storage/data/climate/downscale/BCCAQ2+PRISM/high_res_downscaling/assessment_subsets/',region,'/')
+  }
+
   write.dir  <- paste0('/storage/data/climate/downscale/BCCAQ2+PRISM/high_res_downscaling/assessment_subsets/',region,'/',scenario,'/',type,'/ENSEMBLE/')
 
   if (!file.exists(write.dir)) {
@@ -37,6 +44,9 @@ create.ensemble.annual.climatologies <- function(var.name,type,season,interval,g
 
   if (region=='bc') {
     copy.dir <- paste0(proj.dir,'ACCESS1-0/rcp85/',type,'/climatologies/') ### For BC
+    if (type=='return_periods') {
+           copy.dir <- paste0(proj.dir,'ACCESS1-0/rcp85/',type,'/ACCESS1-0/') ### For BC Return Periods
+    }
   } else {
     copy.dir <- paste0(proj.dir,'rcp85/',type,'/ACCESS1-0/')
   }
@@ -45,8 +55,14 @@ create.ensemble.annual.climatologies <- function(var.name,type,season,interval,g
 
   var.files <- copy.files[grep(paste0('^',var.name,'_'),copy.files)]
   copy.file <- var.files[grep(paste0(season,'_'),var.files)]
-  ##browser()
+
   new.file <- gsub('ACCESS1-0','ENSEMBLE',copy.file)
+  if (region=='bc') {
+     if (type=='return_periods') {
+        new.file <- gsub(var.name,paste0(var.name,'_bc'),new.file)
+        new.file <- gsub('BCCAQ2','climatology_BCCAQ2',new.file)
+     }
+  }
 
   file.copy(from=paste0(copy.dir,copy.file),
             to=paste0(write.dir,new.file),overwrite=T)
@@ -57,12 +73,19 @@ create.ensemble.annual.climatologies <- function(var.name,type,season,interval,g
 
   for (g in seq_along(gcm.list)) {
     gcm <- gcm.list[g]
-    read.dir <- paste(proj.dir,'/rcp85/',type,'/',gcm,'/',sep='')
+    if (region=='bc') {
+       read.dir <- paste(proj.dir,'/',gcm,'/rcp85/',type,'/climatologies/',sep='') ##For BC
+       if (type=='return_periods') {
+          read.dir <- paste0(proj.dir,gcm,'/rcp85/',type,'/',gcm,'/') ### For BC Return Periods
+       }
+    } else {
+       read.dir <- paste(proj.dir,'/rcp85/',type,'/',gcm,'/',sep='')
+    }
     all.files <- list.files(path=read.dir,pattern=interval)
     var.files <- all.files[grep(paste0('^',var.name,'_'),all.files)]
     seas.file <- var.files[grep(paste0(season,'_'),var.files)]
 
-    print('Selected file')
+    print('Selected file')   
     print(seas.file)
     box.read <- brick(paste0(read.dir,seas.file))
       
@@ -99,13 +122,19 @@ create.ensemble.annual.climatologies <- function(var.name,type,season,interval,g
 create.ensemble.seas.mon.climatologies <- function(var.name,type,season,interval,gcm.list,region) {
 
   scenario <- 'rcp85'
-  if (region == 'bc') {
+  if (region == 'north_america') {
+    proj.dir <-   '/storage/data/climate/downscale/CMIP5/building_code/' ##For BC
+  } else if (region == 'bc') {
     proj.dir <-   '/storage/data/climate/downscale/BCCAQ2+PRISM/high_res_downscaling/bccaq_gcm_bc_subset/' ##For BC
   } else {
     proj.dir <-   paste0('/storage/data/climate/downscale/BCCAQ2+PRISM/high_res_downscaling/assessment_subsets/',region,'/')
   }
 
-  write.dir  <- paste0('/storage/data/climate/downscale/BCCAQ2+PRISM/high_res_downscaling/assessment_subsets/',region,'/',scenario,'/',type,'/ENSEMBLE/')
+  if (region =='north_america') {
+    write.dir <- '/storage/data/climate/downscale/CMIP5/building_code/ENSEMBLE/'
+  } else {
+    write.dir  <- paste0('/storage/data/climate/downscale/BCCAQ2+PRISM/high_res_downscaling/assessment_subsets/',region,'/',scenario,'/',type,'/ENSEMBLE/')
+  }
   if (!file.exists(write.dir)) {
      dir.create(write.dir,recursive=T)
   }
@@ -115,7 +144,9 @@ create.ensemble.seas.mon.climatologies <- function(var.name,type,season,interval
                     january=1,february=2,march=3,april=4,may=5,june=6,july=7,august=8,september=9,october=10,november=11,december=12)
   gx <- length(gcm.list)
 
-  if (region == 'bc') {
+  if (region == 'north_america') {
+     copy.dir <- paste0(proj.dir,'ACCESS1-0/climatologies/') ##For BC
+  } else if (region == 'bc') {
      copy.dir <- paste0(proj.dir,'ACCESS1-0/rcp85/',type,'/climatologies/') ##For BC
   } else {
      copy.dir <- paste0(proj.dir,'rcp85/',type,'/ACCESS1-0/')
@@ -128,6 +159,9 @@ create.ensemble.seas.mon.climatologies <- function(var.name,type,season,interval
     copy.file <- var.files[grep(type,var.files)]
     inter.file <- gsub('ACCESS1-0','ENSEMBLE',copy.file)
     new.file <- gsub(type,season,inter.file)      
+    if (region=='north_america') {                  
+      new.file <- gsub('monthly',season,inter.file)
+    }
   } else {
     copy.file <- var.files[grep('seasonal',var.files)] ##For seasonal climdex files
     inter.file <- gsub('ACCESS1-0','ENSEMBLE',copy.file)
@@ -137,14 +171,16 @@ create.ensemble.seas.mon.climatologies <- function(var.name,type,season,interval
             to=paste0(write.dir,'tmp.nc'),overwrite=T)
   system(paste0('cdo -s -O timmean ',write.dir,'tmp.nc ',
                                     write.dir,new.file))
-
+  
   file.split <- strsplit(copy.file,'_')[[1]]
   run <- file.split[grep('r*i1p1',file.split)]
   data.ens <- c()
   for (g in seq_along(gcm.list)) {
     gcm <- gcm.list[g]
     ##print(gcm)
-    if (region=='bc') {
+    if (region=='north_america') {
+       read.dir <- paste(proj.dir,'/',gcm,'/climatologies/',sep='') ##For BC
+    } else if (region=='bc') {
        read.dir <- paste(proj.dir,'/',gcm,'/rcp85/',type,'/climatologies/',sep='') ##For BC
     } else {
        read.dir <- paste(proj.dir,'/rcp85/',type,'/',gcm,'/',sep='')
@@ -221,30 +257,30 @@ gcm.list <- c('ACCESS1-0','CanESM2','CCSM4','CNRM-CM5','CSIRO-Mk3-6-0',
               'GFDL-ESM2G','HadGEM2-CC','HadGEM2-ES','inmcm4',
               'MIROC5','MPI-ESM-LR','MRI-CGCM3')
 
-regions <- c('central','kootenays')
+regions <- 'bc' ##c('central','kootenays')
 intervals <- c('1971-2000','2011-2040','2041-2070','2071-2100')
 
 for (region in regions) {
   for (interval in intervals) {
 if (1==1) {
     ##Degree Day Climatologies
-    var.list <- c('cdd') ##,'fdd','gdd','hdd')
+    var.list <- c('cdd','fdd','gdd','hdd')
     for (var.name in var.list) {
 ##        create.ensemble.annual.climatologies(var.name,type='degree_days',season='annual',interval,gcm.list,region) 
     }
 
-    var.list <- 'tas' ##c('pr','tasmax','tasmin','tas')
+    var.list <- 'wetbulb' ##'tas' ##c('pr','tasmax','tasmin','tas')
 
     ##Annual Climatologies
     for (var.name in var.list) {
-        create.ensemble.annual.climatologies(var.name,type='annual',season='annual',interval,gcm.list,region) 
+##        create.ensemble.annual.climatologies(var.name,type='annual',season='annual',interval,gcm.list,region) 
     } 
 
     ##Monthly Climatologies
     seasons <- c('january','february','march','april','may','june','july','august','september','october','november','december')
     for (var.name in var.list) {
       for (season in seasons) {
-        create.ensemble.seas.mon.climatologies(var.name,type='monthly',season,interval,gcm.list,region) 
+##        create.ensemble.seas.mon.climatologies(var.name,type='monthly_001',season,interval,gcm.list,region) 
       }
     }
 
@@ -252,14 +288,15 @@ if (1==1) {
     seasons <- c('winter','spring','summer','fall')
     for (var.name in var.list) {
       for (season in seasons) {
-        create.ensemble.seas.mon.climatologies(var.name,type='seasonal',season,interval,gcm.list,region) 
+##        create.ensemble.seas.mon.climatologies(var.name,type='seasonal',season,interval,gcm.list,region) 
       }
     }
 
     ##Return Periods
     var.list <- c('pr','tasmax','tasmin')
     for (var.name in var.list) {
-##        create.ensemble.annual.climatologies(var.name,type='return_periods',season='RP20',interval,gcm.list,region) 
+        create.ensemble.annual.climatologies(var.name,type='return_periods',season='RP20',interval,gcm.list,region) 
+
     } 
 } 
 if (1==0) {
@@ -270,21 +307,21 @@ if (1==0) {
                    'rx1dayETCCDI','rx5dayETCCDI',
                    'sdiiETCCDI','r10mmETCCDI','r20mmETCCDI','cwdETCCDI',
                    'cwdETCCDI','cddETCCDI','prcptotETCCDI','cdd90ETCCDI','cddmaxETCCDI',
-                   'r95pETCCDI','r99pETCCDI','r95daysETCCDI','r99daysETCCDI')
-    var.list <- c('r95pETCCDI','rx5dayETCCDI','trETCCDI','su30ETCCDI')    
+                   'r95pETCCDI','r99pETCCDI','r95daysETCCDI','r99daysETCCDI')  
+  var.list <- c('txxETCCDI','tnnETCCDI')    
     for (var.name in var.list) {
-##         create.ensemble.annual.climatologies(var.name,type='climdex',season='annual',interval,gcm.list,region)
+         create.ensemble.annual.climatologies(var.name,type='climdex',season='annual',interval,gcm.list,region)
     }
 
     ##-----------------------------------------------------
     ##Seasonal Climdex
-    var.list <-  c('txxETCCDI','txnETCCDI','tnnETCCDI','tnxETCCDI','dtrETCCDI',
-                   'rx1dayETCCDI','rx5dayETCCDI')
+    var.list <-  c('txxETCCDI','tnnETCCDI') ##,'txnETCCDI','tnxETCCDI','dtrETCCDI',
+                   ##'rx1dayETCCDI','rx5dayETCCDI')
     seasons <- c('winter','spring','summer','fall')
     for (var.name in var.list) {
       print(var.name)
       for (season in seasons) {
-##        create.ensemble.seas.mon.climatologies(var.name,type='climdex',season,interval,gcm.list,region) 
+        create.ensemble.seas.mon.climatologies(var.name,type='climdex',season,interval,gcm.list,region) 
       }
     }
 }
@@ -304,7 +341,8 @@ type <- 'annual_quantiles'
 
 ##regions <- c('van_coastal_health','bella_health','northeast','willow_road')
 ##regions <- c('interior_health','toquaht')
-region <- 'fraser_health'
+##region <- 'fraser_health'
+region <- 'bc'
 
 for (region in regions) {
   for (interval in intervals) {
@@ -323,7 +361,7 @@ var.list <- c('pr','pr','pr')
 seas.list <- c('maximum','minimum','standard_deviation')
 type <- 'annual'
 
-regions <- c('van_coastal_health','bella_health','northeast','willow_road')
+regions <- 'interior_health' ##c('van_coastal_health','bella_health','northeast','willow_road')
 
 for (region in regions) {
   for (interval in intervals) {

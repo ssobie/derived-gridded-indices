@@ -130,32 +130,40 @@ r9.precip.for.model <- function(varname,ann.names,ann.ncs,lat.ix,n.lon,yearly.fa
 ##--------------------------------------------------------------
 ##****************************************************************
 
-if (1==0) {
+if (1==1) {
   args <- commandArgs(trailingOnly=TRUE)
   for(i in 1:length(args)){
       eval(parse(text=args[[i]]))
   }
 }
 
-tmp.dir <- '/local_temp/ssobie/prism/' ##tmpdir
+tmp.dir <- tmpdir ##'/local_temp/ssobie/prism/' ##tmpdir
 
-gcm <- 'ACCESS1-0'
-scenario <- 'rcp85'
-run <- 'r1i1p1'
-interval <- '1950-2100'
-type <- 'annual'
-varname <- 'prcptot'
+##gcm <- 'CNRM-CM5'
+##scenario <- 'rcp85'
+##run <- 'r1i1p1'
+##interval <- '1951-2100'
+##type <- 'monthly'
+##varname <- 'dtr'
 
 input.name <- input.varname[[varname]]
 climdex.name <- paste0('climdex.',varname)
 climdex.info <- get.climdex.info(climdex.name)
 
+
+##Latitude Bands
+lat.st <- seq(48.1,59.9,0.1) ##format(seq(48.0,59.9,0.1),nsmall=1)
+lat.en <- seq(48.2,60.0,0.1) ##format(seq(48.1,60.0,0.1),nsmall=1)
+
+len <- length(lat.st)
+
 if (cedar) {
    base.dir <- '/scratch/ssobie/prism/'
 } else {
-   base.dir <- '/storage/data/climate/downscale/BCCAQ2+PRISM/mvbc/bccaq2/'
+   base.dir <- '/storage/data/climate/downscale/BCCAQ2+PRISM/high_res_downscaling/bccaq_gcm_bc_subset/'
 }
 
+###data.dir <- paste0(base.dir,gcm,'/lat_split/')
 data.dir <- paste0('/storage/data/climate/downscale/CMIP5_delivery/',gcm,'/lat_split/')
 
 template.dir <- paste0(base.dir,gcm,'/template/',scenario,'/climdex/')
